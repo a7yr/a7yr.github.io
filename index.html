@@ -44,11 +44,13 @@
   </div>
 
   <script>
-    // --- IMPORTANT: ADD YOUR LAST.FM DETAILS HERE ---
+    // --- IMPORTANT: ADD YOUR LAST.FM API KEY HERE ---
     const API_KEY = 'b31d67b732b6bb6f66ca8f9c033b97c1'; 
     const USERNAME = 'a7yr';
     
     const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=1`;
+
+    let lastTrackName = "";
 
     async function getLiveSong() {
       try {
@@ -56,20 +58,30 @@
         const data = await response.json();
         
         const track = data.recenttracks.track[0];
+        if (!track) return;
+
+        const trackName = track.name;
+        const artistName = track.artist['#text'];
         
-        // Update the HTML with the live data
-        document.getElementById('song-title').innerText = track.name;
-        document.getElementById('artist-name').innerText = track.artist['#text'];
-        
-        // Get the extra-large image (index 3)
-        if (track.image && track.image[3] && track.image[3]['#text']) {
-          document.getElementById('album-art').src = track.image[3]['#text'];
-        }
+        // Get the extra-large image (index 3) safely
+        const artUrl = (track.image && track.image[3] && track.image[3]['#text']) 
+          ? track.image[3]['#text'] 
+          : 'https://placehold.co/150x150/111/333?text=No+Art';
 
         // Check if it is currently playing right this second
         const isPlaying = track['@attr'] && track['@attr'].nowplaying === 'true';
         const indicator = document.querySelector('.live-indicator span:last-child');
         
+        // ONLY update DOM if the song changes to stop multi-device ping-pong flickering
+        if (trackName !== lastTrackName) {
+          lastTrackName = trackName;
+          
+          document.getElementById('song-title').innerText = trackName;
+          document.getElementById('artist-name').innerText = artistName;
+          document.getElementById('album-art').src = artUrl;
+        }
+
+        // Always update the play state status (Now Playing vs Last Played) smoothly
         if (isPlaying) {
           indicator.innerText = "Now Playing";
           document.querySelector('.pulse-dot').style.backgroundColor = "#ff2a5f"; // Apple Music Pink
@@ -83,9 +95,9 @@
       }
     }
 
-    // Fetch immediately, then check every 15 seconds
+    // Fetch immediately, then check every 10 seconds safely
     getLiveSong();
-    setInterval(getLiveSong, 15000); 
+    setInterval(getLiveSong, 10000); 
   </script>
 </body>
 </html>
