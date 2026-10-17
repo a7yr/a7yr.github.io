@@ -105,7 +105,8 @@
     let trackDurationSec = 0;
     let trackStartEpoch = 0;
     let isTrackPlaying = false;
-    let frozenElapsedSec = 0; // Yeh pause hone par exact second ko pakad ke rakhega
+    let frozenElapsedSec = 0;
+    let lastKnownPlayingTrack = null; // Ghost track / Khayaal bug ko rokne ke liye permanent lock
 
     function formatTime(seconds) {
       if (isNaN(seconds) || seconds < 0) return "0:00";
@@ -140,24 +141,35 @@
         const tracks = data.recenttracks.track;
         if (!tracks || tracks.length === 0) return;
 
-        let currentTrack = tracks[0];
-        let playingIndex = 0;
-
+        // Check if any track is currently playing right now
+        let playingTrack = null;
         for (let i = 0; i < Math.min(tracks.length, 3); i++) {
           if (tracks[i]['@attr'] && tracks[i]['@attr'].nowplaying === 'true') {
-            currentTrack = tracks[i];
-            playingIndex = i;
+            playingTrack = tracks[i];
             break;
           }
+        }
+
+        let currentTrack;
+        if (playingTrack) {
+          // Agar gaana chal raha hai, toh wahi lo aur save karke rakho
+          currentTrack = playingTrack;
+          lastKnownPlayingTrack = playingTrack;
+          isTrackPlaying = true;
+        } else if (lastKnownPlayingTrack) {
+          // Agar pause ho gaya hai, toh Khayaal ko lane ki jagah last known playing track ko hi freeze rakho!
+          currentTrack = lastKnownPlayingTrack;
+          isTrackPlaying = false;
+        } else {
+          currentTrack = tracks[0];
+          isTrackPlaying = false;
         }
 
         const trackName = currentTrack.name;
         const artistName = currentTrack.artist['#text'];
         const trackUniqueKey = `${trackName}-${artistName}`;
-        
-        const currentlyPlayingFlag = currentTrack['@attr'] && currentTrack['@attr'].nowplaying === 'true';
 
-        // Agar gaana change hua hai toh naya start time set karo
+        // Agar naya gaana laga hai tabhi details aur timer reset karo
         if (trackUniqueKey !== activeTrackKey) {
           activeTrackKey = trackUniqueKey;
           document.getElementById('song-title').innerText = trackName;
@@ -185,9 +197,6 @@
           document.getElementById('total-duration').innerText = formatTime(trackDurationSec);
         }
 
-        // Status check: Agar Last.fm abhi bhi 'nowplaying' bol raha hai toh play maano
-        isTrackPlaying = currentlyPlayingFlag;
-
         const indicatorText = document.getElementById('status-text');
         if (isTrackPlaying) {
           indicatorText.innerText = "Now Playing";
@@ -197,16 +206,17 @@
           document.querySelector('.pulse-dot').style.backgroundColor = "#555";
         }
 
-        // Render History List
+        // Render Recent Vibe History (Fresh fetch, skipping active track)
         const historyContainer = document.getElementById('history-container');
         historyContainer.innerHTML = ""; 
 
         let historyCount = 0;
         for (let i = 0; i < tracks.length; i++) {
-          if (i === playingIndex) continue; 
+          const t = tracks[i];
+          // Skip if it's the exact track currently shown on the main card
+          if (t.name === trackName && t.artist['#text'] === artistName) continue;
           if (historyCount >= 10) break; 
 
-          const t = tracks[i];
           let tArt = (t.image && t.image[1] && t.image[1]['#text']) ? t.image[1]['#text'] : 'https://placehold.co/40x40/111/333?text=?';
 
           historyContainer.innerHTML += `
@@ -226,21 +236,19 @@
       }
     }
 
-    // Real-time progress bar jo pause hone par wahin ruk jaye aur play par wapas chale
     function updateProgressAnimation() {
       let currentElapsedSec = 0;
 
       if (isTrackPlaying && trackStartEpoch > 0) {
-        // Real-time calculation based on actual epoch time elapsed
         const nowEpoch = Math.floor(Date.now() / 1000);
         currentElapsedSec = nowEpoch - trackStartEpoch;
         
         if (currentElapsedSec > trackDurationSec) {
           currentElapsedSec = trackDurationSec;
         }
-        frozenElapsedSec = currentElapsedSec; // Save current position
+        frozenElapsedSec = currentElapsedSec; // Save exact point
       } else {
-        // Jab pause ho, toh last frozen second ko pakad ke rakho (agey nahi badhega)
+        // Paused hone par exact frozen second par lock rahega
         currentElapsedSec = frozenElapsedSec;
       }
 
@@ -252,8 +260,8 @@
     }
 
     getLiveSongs();
-    setInterval(getLiveSongs, 8000); // Check Last.fm frequently for play/pause state
-    setInterval(updateProgressAnimation, 1000); // UI tick every 1s
+    setInterval(getLiveSongs, 6000); // Check faster (every 6s) for instant pause/play reaction
+    setInterval(updateProgressAnimation, 1000); 
   </script>
 </body>
 </html>
