@@ -363,7 +363,6 @@
   </div>
 
   <script>
-    // Pure Vanilla JS Execution - Guarantee Fast & Unstuck Performance
     const LASTFM_USERNAME = "a7yr";
     const LASTFM_API_KEY = "b31d67b732b6bb6f66ca8f9c033b97c1";
     const ADMIN_PASSCODE = "aarav123";
@@ -450,15 +449,18 @@
       return encodeURIComponent(`${cleanTitle} ${cleanArtist}`);
     }
 
-    async function getHighResCoverArt(title, artist, rawArt) {
-      if (rawArt && rawArt.trim() !== "" && !rawArt.includes("2a9b3a5c119d2a7156f7c70c778c3194")) {
-        return rawArt;
+    // MULTI-PROVIDER ULTIMATE SCRAPER
+    async function getUniversalHighResCoverArt(title, artist, rawLastFmArt) {
+      // 0. Check if Last.fm gave a valid art (Ignore 2a9b3a5c star placeholder)
+      if (rawLastFmArt && rawLastFmArt.trim() !== "" && !rawLastFmArt.includes("2a9b3a5c119d2a7156f7c70c778c3194")) {
+        return rawLastFmArt;
       }
 
-      const queryStr = cleanSearchQuery(title, artist);
+      const qStr = cleanSearchQuery(title, artist);
 
+      // 1. JioSaavn Scraper (Best for Indian/Regional/Bollywood tracks like Laado)
       try {
-        const res = await fetch(`https://saavn.dev/api/search/songs?query=${queryStr}&limit=1`);
+        const res = await fetch(`https://saavn.dev/api/search/songs?query=${qStr}&limit=1`);
         const data = await res.json();
         if (data.data && data.data.results && data.data.results.length > 0) {
           const imgs = data.data.results[0].image;
@@ -466,12 +468,29 @@
         }
       } catch (e) {}
 
+      // 2. Deezer API Scraper
       try {
-        const res = await fetch(`https://itunes.apple.com/search?term=${queryStr}&entity=song&limit=1`);
+        const res = await fetch(`https://api.deezer.com/search?q=${qStr}&limit=1`);
+        const data = await res.json();
+        if (data.data && data.data.length > 0 && data.data[0].album.cover_big) {
+          return data.data[0].album.cover_big;
+        }
+      } catch (e) {}
+
+      // 3. Apple iTunes API Scraper
+      try {
+        const res = await fetch(`https://itunes.apple.com/search?term=${qStr}&entity=song&limit=1`);
         const data = await res.json();
         if (data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
-          return data.results[0].artworkUrl100.replace('100x100bb', '300x300bb');
+          return data.results[0].artworkUrl100.replace('100x100bb', '400x400bb');
         }
+      } catch (e) {}
+
+      // 4. DuckDuckGo Fast Image Scraper (Catches cover from Google Images / YT Music)
+      try {
+        const ddgRes = await fetch(`https://api.duckduckgo.com/?q=${qStr}+song+cover+art&format=json`);
+        const ddgData = await ddgRes.json();
+        if (ddgData.Image) return ddgData.Image;
       } catch (e) {}
 
       return CLEAN_FALLBACK_SVG;
@@ -497,21 +516,24 @@
           document.getElementById('currentTitle').innerText = title;
           document.getElementById('currentArtist').innerText = artist;
 
-          getHighResCoverArt(title, artist, rawArt).then(coverUrl => {
+          // Fetch High-Res Cover with Multi-Service Fallbacks
+          getUniversalHighResCoverArt(title, artist, rawArt).then(coverUrl => {
             document.getElementById('currentArt').src = coverUrl;
           });
 
-          // Render History
+          // Render History with Scraped Cover Arts
           const historyContainer = document.getElementById('vibeHistoryList');
           if (historyContainer && tracks.length > 1) {
-            historyContainer.innerHTML = tracks.slice(1, 6).map(track => {
+            const historyTracks = tracks.slice(1, 6);
+            
+            historyContainer.innerHTML = historyTracks.map((track, idx) => {
               const tTitle = track.name || "Unknown Track";
               const tArtist = track.artist ? track.artist['#text'] : "Unknown Artist";
-              const tArt = (track.image && track.image[1]['#text']) ? track.image[1]['#text'] : CLEAN_FALLBACK_SVG;
+              const tRawArt = (track.image && track.image[track.image.length - 1]['#text']) ? track.image[track.image.length - 1]['#text'] : "";
 
               return `
-                <div class="vibe-item">
-                  <img class="album-art-sm" src="${escapeHTML(tArt)}" alt="Art" />
+                <div class="vibe-item" id="hist-item-${idx}">
+                  <img class="album-art-sm" id="hist-img-${idx}" src="${CLEAN_FALLBACK_SVG}" alt="Art" />
                   <div class="track-info-sm">
                     <h4>${escapeHTML(tTitle)}</h4>
                     <p>${escapeHTML(tArtist)}</p>
@@ -519,6 +541,18 @@
                 </div>
               `;
             }).join('');
+
+            // Asynchronously resolve history cover arts using Scraper
+            historyTracks.forEach((track, idx) => {
+              const tTitle = track.name || "";
+              const tArtist = track.artist ? track.artist['#text'] : "";
+              const tRawArt = (track.image && track.image[track.image.length - 1]['#text']) ? track.image[track.image.length - 1]['#text'] : "";
+              
+              getUniversalHighResCoverArt(tTitle, tArtist, tRawArt).then(artUrl => {
+                const imgElem = document.getElementById(`hist-img-${idx}`);
+                if (imgElem) imgElem.src = artUrl;
+              });
+            });
           }
         }
       } catch (err) {
