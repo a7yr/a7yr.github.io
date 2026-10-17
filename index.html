@@ -326,112 +326,176 @@
   </div>
 
   <script>
-    const LASTFM_USERNAME = "a7yr";
-    const LASTFM_API_KEY = "b31d67b732b6bb6f66ca8f9c033b97c1";
-    const ADMIN_PASSCODE = "aarav123";
-    const RTDB_MOOD_URL = "https://a7yrshitvc-default-rtdb.asia-southeast1.firebasedatabase.app/current_mood.json";
-    const CLEAN_FALLBACK_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='92' height='92' viewBox='0 0 92 92'><rect width='92' height='92' fill='%2315151a'/><circle cx='46' cy='46' r='18' fill='none' stroke='%23333' stroke-width='4'/></svg>";
+    var LASTFM_USERNAME = "a7yr";
+    var LASTFM_API_KEY = "b31d67b732b6bb6f66ca8f9c033b97c1";
+    var ADMIN_PASSCODE = "aarav123";
+    var RTDB_MOOD_URL = "https://a7yrshitvc-default-rtdb.asia-southeast1.firebasedatabase.app/current_mood.json";
+    var CLEAN_FALLBACK_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='92' height='92' viewBox='0 0 92 92'><rect width='92' height='92' fill='%2315151a'/><circle cx='46' cy='46' r='18' fill='none' stroke='%23333' stroke-width='4'/></svg>";
 
-    function updateClock() {
+    // Clock
+    function runClock() {
       try {
-        const now = new Date();
-        document.getElementById('clock').innerText = now.toLocaleTimeString([], {
-          hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
-        });
-      } catch(e){}
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
-
-    const toggleEditBtn = document.getElementById("toggleEditBtn");
-    const statusInputGroup = document.getElementById("statusInputGroup");
-    const statusElem = document.getElementById("liveStatusText");
-
-    toggleEditBtn.addEventListener("click", () => {
-      if (statusInputGroup.classList.contains("active")) {
-        statusInputGroup.classList.remove("active");
-        toggleEditBtn.innerText = "Edit Mood 🔒";
-      } else {
-        const pass = prompt("Enter Admin Secret Key to edit mood:");
-        if (pass === ADMIN_PASSCODE) {
-          statusInputGroup.classList.add("active");
-          toggleEditBtn.innerText = "Close ✖";
-        } else if (pass !== null) {
-          alert("Incorrect Passcode!");
-        }
-      }
-    });
-
-    async function fetchUniversalMood() {
-      try {
-        const res = await fetch(RTDB_MOOD_URL);
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.text) statusElem.innerText = data.text;
+        var now = new Date();
+        var clockEl = document.getElementById('clock');
+        if (clockEl) {
+          clockEl.innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
         }
       } catch (e) {}
     }
+    setInterval(runClock, 1000);
+    runClock();
 
-    async function updateCustomStatus(statusText) {
-      if (!statusText || !statusText.trim()) return;
-      try {
-        await fetch(RTDB_MOOD_URL, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: statusText.trim(), updatedAt: new Date().toISOString() })
-        });
-        statusElem.innerText = statusText.trim();
+    // Admin Toggle
+    var toggleEditBtn = document.getElementById("toggleEditBtn");
+    var statusInputGroup = document.getElementById("statusInputGroup");
+    var statusElem = document.getElementById("liveStatusText");
+
+    if (toggleEditBtn) {
+      toggleEditBtn.addEventListener("click", function() {
+        if (statusInputGroup.classList.contains("active")) {
+          statusInputGroup.classList.remove("active");
+          toggleEditBtn.innerText = "Edit Mood 🔒";
+        } else {
+          var pass = prompt("Enter Admin Secret Key to edit mood:");
+          if (pass === ADMIN_PASSCODE) {
+            statusInputGroup.classList.add("active");
+            toggleEditBtn.innerText = "Close ✖";
+          } else if (pass !== null) {
+            alert("Incorrect Passcode!");
+          }
+        }
+      });
+    }
+
+    // Custom Mood Update
+    function updateCustomStatus(text) {
+      if (!text || !text.trim()) return;
+      var cleanText = text.trim();
+      fetch(RTDB_MOOD_URL, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: cleanText, updatedAt: new Date().toISOString() })
+      }).then(function() {
+        if (statusElem) statusElem.innerText = cleanText;
         document.getElementById("statusInput").value = "";
-        statusInputGroup.classList.remove("active");
-        toggleEditBtn.innerText = "Edit Mood 🔒";
-      } catch (e) {}
+        if (statusInputGroup) statusInputGroup.classList.remove("active");
+        if (toggleEditBtn) toggleEditBtn.innerText = "Edit Mood 🔒";
+      }).catch(function(e){});
     }
 
-    document.getElementById("updateStatusBtn").addEventListener("click", () => {
-      updateCustomStatus(document.getElementById("statusInput").value);
-    });
+    var updateBtn = document.getElementById("updateStatusBtn");
+    if (updateBtn) {
+      updateBtn.addEventListener("click", function() {
+        var input = document.getElementById("statusInput");
+        if (input) updateCustomStatus(input.value);
+      });
+    }
 
-    async function getCoverArt(title, artist, rawArt) {
-      if (rawArt && !rawArt.includes("2a9b3a5c119d2a7156f7c70c778c3194") && !rawArt.includes("star")) {
-        return rawArt;
+    function fetchUniversalMood() {
+      fetch(RTDB_MOOD_URL)
+        .then(function(res){ return res.json(); })
+        .then(function(data){
+          if (data && data.text && statusElem) {
+            statusElem.innerText = data.text;
+          }
+        })
+        .catch(function(e){});
+    }
+
+    // Cover Artwork Fetcher with Safe Fallbacks
+    function fetchArtwork(title, artist, rawArt, callback) {
+      if (rawArt && rawArt.indexOf("2a9b3a5c119d2a7156f7c70c778c3194") === -1 && rawArt.indexOf("star") === -1) {
+        callback(rawArt);
+        return;
       }
-      try {
-        const cleanT = (title || "").replace(/\(.*?\)|\[.*?\]/g, "").trim();
-        const cleanA = (artist || "").split(/&|,/)[0].trim();
-        const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(cleanT + " " + cleanA)}&entity=song&limit=1`);
-        const data = await res.json();
-        if (data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
-          return data.results[0].artworkUrl100.replace("100x100bb", "600x600bb");
-        }
-      } catch (e) {}
-      return CLEAN_FALLBACK_SVG;
+      var cleanTitle = (title || "").replace(/\(.*?\)|\[.*?\]/g, "").trim();
+      var cleanArtist = (artist || "").split(/&|,/)[0].trim();
+      var query = encodeURIComponent(cleanTitle + " " + cleanArtist);
+
+      fetch("https://itunes.apple.com/search?term=" + query + "&entity=song&limit=1")
+        .then(function(res){ return res.json(); })
+        .then(function(data){
+          if (data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
+            var url = data.results[0].artworkUrl100.replace("100x100bb", "600x600bb");
+            callback(url);
+          } else {
+            callback(CLEAN_FALLBACK_SVG);
+          }
+        })
+        .catch(function(){
+          callback(CLEAN_FALLBACK_SVG);
+        });
     }
 
-    async function checkLiveLastFmTrack() {
-      try {
-        const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${LASTFM_USERNAME}&api_key=${LASTFM_API_KEY}&format=json&limit=6&_=${Date.now()}`;
-        const res = await fetch(url);
-        if (!res.ok) return;
-        const data = await res.json();
+    // Sync Live Last.fm Music
+    function checkLiveLastFmTrack() {
+      var url = "https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=" + LASTFM_USERNAME + "&api_key=" + LASTFM_API_KEY + "&format=json&limit=6&_=" + Date.now();
+      fetch(url)
+        .then(function(res){ return res.json(); })
+        .then(function(data){
+          if (!data || !data.recenttracks || !data.recenttracks.track || data.recenttracks.track.length === 0) return;
 
-        if (data.recenttracks && data.recenttracks.track && data.recenttracks.track.length > 0) {
-          const tracks = data.recenttracks.track;
-          const current = tracks[0];
-          const title = current.name || "Unknown";
-          const artist = current.artist ? current.artist['#text'] : "Unknown";
-          const rawArt = current.image ? current.image[current.image.length - 1]['#text'] : "";
-          const isNowPlaying = current['@attr'] && current['@attr'].nowplaying === "true";
+          var tracks = data.recenttracks.track;
+          var current = tracks[0];
+          var title = current.name || "Unknown Track";
+          var artist = (current.artist && current.artist['#text']) ? current.artist['#text'] : "Unknown Artist";
+          var rawArt = (current.image && current.image.length > 0) ? current.image[current.image.length - 1]['#text'] : "";
+          var isNowPlaying = current['@attr'] && current['@attr'].nowplaying === "true";
 
-          document.getElementById('statusBadge').innerText = isNowPlaying ? "NOW PLAYING" : "LAST PLAYED";
-          document.getElementById('currentTitle').innerText = title;
-          document.getElementById('currentArtist').innerText = artist;
+          var badge = document.getElementById('statusBadge');
+          var titleEl = document.getElementById('currentTitle');
+          var artistEl = document.getElementById('currentArtist');
+          var artEl = document.getElementById('currentArt');
 
-          getCoverArt(title, artist, rawArt).then(art => {
-            const el = document.getElementById('currentArt');
-            if(el) el.src = art;
+          if (badge) badge.innerText = isNowPlaying ? "NOW PLAYING" : "LAST PLAYED";
+          if (titleEl) titleEl.innerText = title;
+          if (artistEl) artistEl.innerText = artist;
+
+          fetchArtwork(title, artist, rawArt, function(imgSrc){
+            if (artEl) artEl.src = imgSrc;
           });
 
-          // History Render
-          const historyContainer = document.getElementById('vibeHistoryList');
+          // History List
+          var historyContainer = document.getElementById('vibeHistoryList');
           if (historyContainer) {
-            const hTracks =
+            var historyTracks = isNowPlaying ? tracks.slice(1, 6) : tracks.slice(0, 5);
+            var html = "";
+            for (var i = 0; i < historyTracks.length; i++) {
+              var t = historyTracks[i];
+              var tTitle = t.name || "Unknown Track";
+              var tArtist = (t.artist && t.artist['#text']) ? t.artist['#text'] : "Unknown Artist";
+              html += '<div class="vibe-item">' +
+                        '<img class="album-art-sm" id="h-img-' + i + '" src="' + CLEAN_FALLBACK_SVG + '" alt="art"/>' +
+                        '<div class="track-info-sm">' +
+                          '<h4>' + tTitle + '</h4>' +
+                          '<p>' + tArtist + '</p>' +
+                        '</div>' +
+                      '</div>';
+            }
+            historyContainer.innerHTML = html;
+
+            // Load history artwork asynchronously
+            for (var j = 0; j < historyTracks.length; j++) {
+              (function(index, trackItem){
+                var itemTitle = trackItem.name || "";
+                var itemArtist = (trackItem.artist && trackItem.artist['#text']) ? trackItem.artist['#text'] : "";
+                var itemRawArt = (trackItem.image && trackItem.image.length > 0) ? trackItem.image[trackItem.image.length - 1]['#text'] : "";
+                fetchArtwork(itemTitle, itemArtist, itemRawArt, function(imgSrc){
+                  var imgTarget = document.getElementById('h-img-' + index);
+                  if (imgTarget) imgTarget.src = imgSrc;
+                });
+              })(j, historyTracks[j]);
+            }
+          }
+        })
+        .catch(function(err){});
+    }
+
+    fetchUniversalMood();
+    checkLiveLastFmTrack();
+
+    setInterval(fetchUniversalMood, 5000);
+    setInterval(checkLiveLastFmTrack, 5000);
+  </script>
+</body>
+</html>
