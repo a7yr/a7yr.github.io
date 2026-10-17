@@ -415,7 +415,6 @@
           return;
         }
 
-        // Clean title: removes movie names like (From "Devara"), brackets, ft, etc.
         var cleanT = (title || "")
           .replace(/\(.*?\)|\[.*?\]/g, "")
           .replace(/from\s+["'].*?["']/gi, "")
