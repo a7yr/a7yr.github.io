@@ -105,11 +105,13 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 10px;
     }
 
     .status-pill {
       font-weight: 600;
       color: var(--accent-color);
+      word-break: break-word;
     }
 
     .edit-toggle-btn {
@@ -119,6 +121,7 @@
       font-size: 0.75rem;
       cursor: pointer;
       text-decoration: underline;
+      white-space: nowrap;
     }
 
     .edit-toggle-btn:hover {
@@ -126,7 +129,7 @@
     }
 
     .status-input-group {
-      display: none; /* Hidden by default until Admin clicks edit */
+      display: none;
       gap: 8px;
       margin-top: 4px;
     }
@@ -318,7 +321,7 @@
         <span id="statusBadge">NOW PLAYING</span>
       </div>
       <div class="track-main">
-        <img id="currentArt" crossorigin="anonymous" class="album-art-lg" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'><rect width='90' height='90' fill='%231a1a1e'/></svg>" alt="Album Art" />
+        <img id="currentArt" crossorigin="anonymous" class="album-art-lg" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'><rect width='90' height='90' fill='%231a1a1e'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23888' font-size='14'>Art</text></svg>" alt="Album Art" />
         <div class="track-info-lg">
           <h2 id="currentTitle">Loading track...</h2>
           <p id="currentArtist">Please wait</p>
@@ -371,7 +374,7 @@
 
     const LASTFM_USERNAME = "a7yr";
     const LASTFM_API_KEY = "b31d67b732b6bb6f66ca8f9c033b97c1";
-    const ADMIN_PASSCODE = "aarav123"; // Apni pasand ka Secret Password rakhein
+    const ADMIN_PASSCODE = "aarav123";
     let currentSavedTrackKey = "";
     const colorThief = new ColorThief();
 
@@ -404,9 +407,16 @@
     const currentImg = document.getElementById('currentArt');
     currentImg.addEventListener('load', () => updateDynamicTheme(currentImg));
 
-    // Protected Custom Status Logic
+    // Protected Custom Status with LocalStorage + Firebase Persistence
     const toggleEditBtn = document.getElementById("toggleEditBtn");
     const statusInputGroup = document.getElementById("statusInputGroup");
+    const statusElem = document.getElementById("liveStatusText");
+
+    // Load local cached status instantly on page open
+    const cachedStatus = localStorage.getItem("aarav_vibe_status");
+    if (cachedStatus) {
+      statusElem.innerText = cachedStatus;
+    }
 
     toggleEditBtn.addEventListener("click", () => {
       if (statusInputGroup.classList.contains("active")) {
@@ -425,26 +435,31 @@
 
     async function updateCustomStatus(statusText) {
       if (!statusText || !statusText.trim()) return;
+      const textToSave = statusText.trim();
+      
+      // Save locally first
+      localStorage.setItem("aarav_vibe_status", textToSave);
+      statusElem.innerText = textToSave;
+
       try {
         await setDoc(doc(db, "user_status", "current_vibe"), {
-          text: statusText.trim(),
+          text: textToSave,
           updatedAt: serverTimestamp()
         });
         document.getElementById("statusInput").value = "";
         statusInputGroup.classList.remove("active");
         toggleEditBtn.innerText = "Edit Mood 🔒";
       } catch (e) {
-        console.error("Error updating status:", e);
+        console.error("Error updating status to Firebase:", e);
       }
     }
 
     function listenToCustomStatus() {
       onSnapshot(doc(db, "user_status", "current_vibe"), (docSnap) => {
-        const statusElem = document.getElementById("liveStatusText");
         if (docSnap.exists() && docSnap.data().text) {
-          statusElem.innerText = docSnap.data().text;
-        } else {
-          statusElem.innerText = "Chillin & Listening 🎧";
+          const remoteText = docSnap.data().text;
+          localStorage.setItem("aarav_vibe_status", remoteText);
+          statusElem.innerText = remoteText;
         }
       });
     }
