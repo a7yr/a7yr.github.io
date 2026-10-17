@@ -76,6 +76,78 @@
       gap: 6px;
     }
 
+    .nav-link {
+      color: var(--accent-color);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: opacity 0.2s;
+    }
+
+    .nav-link:hover {
+      opacity: 0.8;
+    }
+
+    /* Interactive Vibe Input Box */
+    .status-card {
+      background: #0f0f11;
+      border: 1px solid #1a1a1e;
+      border-radius: 12px;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .status-display {
+      font-size: 0.9rem;
+      color: #d1d1d6;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-pill {
+      font-weight: 600;
+      color: var(--accent-color);
+    }
+
+    .status-input-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .status-input-group input {
+      flex: 1;
+      background: #151518;
+      border: 1px solid #232328;
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: #fff;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    .status-input-group input:focus {
+      border-color: var(--accent-color);
+    }
+
+    .status-input-group button {
+      background: var(--accent-color);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .status-input-group button:hover {
+      opacity: 0.9;
+    }
+
     .card {
       background: #0f0f11;
       border: 1px solid #1a1a1e;
@@ -200,8 +272,24 @@
         <span>•</span>
         <span>Local Time: <span id="clock">12:00:00 AM</span> 🕒</span>
       </div>
+      <div style="margin-top: 8px;">
+        <a href="favs.html" class="nav-link">♥ View Favorite Songs</a>
+      </div>
     </header>
 
+    <!-- Interactive Custom Status Card -->
+    <div class="status-card">
+      <div class="status-display">
+        <span>Current Mood:</span>
+        <span class="status-pill" id="liveStatusText">Setting up vibes...</span>
+      </div>
+      <div class="status-input-group">
+        <input type="text" id="statusInput" placeholder="Update your live vibe status..." />
+        <button id="updateStatusBtn">Set Status</button>
+      </div>
+    </div>
+
+    <!-- Main Now Playing Card -->
     <div class="card now-playing-card" id="nowPlayingCard">
       <div class="badge">
         <span class="badge-dot" id="badgeDot"></span>
@@ -216,6 +304,7 @@
       </div>
     </div>
 
+    <!-- Recent Vibe History Section -->
     <div class="history-section">
       <h3>Recent Activities ^_^</h3>
       <div class="vibe-list" id="vibeHistoryList">
@@ -235,6 +324,8 @@
       getFirestore, 
       collection, 
       addDoc, 
+      doc,
+      setDoc,
       onSnapshot, 
       query, 
       orderBy, 
@@ -289,6 +380,42 @@
 
     const currentImg = document.getElementById('currentArt');
     currentImg.addEventListener('load', () => updateDynamicTheme(currentImg));
+
+    // Custom Live Vibe/Status Handlers
+    async function updateCustomStatus(statusText) {
+      if (!statusText || !statusText.trim()) return;
+      try {
+        await setDoc(doc(db, "user_status", "current_vibe"), {
+          text: statusText.trim(),
+          updatedAt: serverTimestamp()
+        });
+        document.getElementById("statusInput").value = "";
+      } catch (e) {
+        console.error("Error updating status:", e);
+      }
+    }
+
+    function listenToCustomStatus() {
+      onSnapshot(doc(db, "user_status", "current_vibe"), (docSnap) => {
+        const statusElem = document.getElementById("liveStatusText");
+        if (docSnap.exists() && docSnap.data().text) {
+          statusElem.innerText = docSnap.data().text;
+        } else {
+          statusElem.innerText = "Chillin & Listening 🎧";
+        }
+      });
+    }
+
+    document.getElementById("updateStatusBtn").addEventListener("click", () => {
+      const input = document.getElementById("statusInput");
+      updateCustomStatus(input.value);
+    });
+
+    document.getElementById("statusInput").addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        updateCustomStatus(e.target.value);
+      }
+    });
 
     function cleanSearchQuery(title, artist) {
       const cleanTitle = title.replace(/\(from ".*?"\)/gi, '')
@@ -406,6 +533,7 @@
       );
     }
 
+    listenToCustomStatus();
     listenToVibeHistoryDatabase();
     checkLiveLastFmTrack();
     setInterval(checkLiveLastFmTrack, 8000);
