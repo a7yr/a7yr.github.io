@@ -3,12 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Acentyr | Live Activity</title>
+  <title>AaravReallyGoneCrazy</title>
   <link rel="stylesheet" href="style.css">
-  <!-- Adding Google Fonts for that clean aesthetic -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <style>
-    /* Quick inline styles for the history list so it matches your glass card */
     .history-list {
       margin-top: 20px;
       display: flex;
@@ -90,10 +88,25 @@
     const API_KEY = 'b31d67b732b6bb6f66ca8f9c033b97c1'; 
     const USERNAME = 'a7yr';
     
-    // Request limit set to 10 to grab the current track + last 9 history items
     const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=10`;
 
     let lastTrackName = "";
+
+    // Fast backup function to fetch cover art from iTunes if Last.fm doesn't have it
+    async function getItunesArt(artist, song) {
+      try {
+        const query = encodeURIComponent(`${artist} ${song}`);
+        const res = await fetch(`https://itunes.apple.com/search?term=${query}&entity=song&limit=1`);
+        const data = await res.json();
+        if (data.results && data.results.length > 0) {
+          // Swap iTunes default 100x100 resolution URL to high quality 300x300
+          return data.results[0].artworkUrl100.replace('100x100bb', '300x300bb');
+        }
+      } catch (e) {
+        console.error("iTunes cover fetch failed", e);
+      }
+      return null;
+    }
 
     async function getLiveSongs() {
       try {
@@ -103,15 +116,20 @@
         const tracks = data.recenttracks.track;
         if (!tracks || tracks.length === 0) return;
 
-        // 1. Handle the Current / Most Recent Track
+        // 1. Handle Main Track
         const currentTrack = tracks[0];
         const trackName = currentTrack.name;
         const artistName = currentTrack.artist['#text'];
         
-        // Fixed Album Art logic with a fallback placeholder if Last.fm image is empty
-        const artUrl = (currentTrack.image && currentTrack.image[3] && currentTrack.image[3]['#text']) 
+        // Check Last.fm image first
+        let artUrl = (currentTrack.image && currentTrack.image[3] && currentTrack.image[3]['#text']) 
           ? currentTrack.image[3]['#text'] 
-          : 'https://placehold.co/150x150/111/333?text=No+Art';
+          : '';
+
+        // If Last.fm art is missing, query iTunes instantly
+        if (!artUrl || artUrl.includes('2a96cbd8b46e442fc41c2b86b821562f')) {
+          artUrl = await getItunesArt(artistName, trackName) || 'https://placehold.co/150x150/111/333?text=No+Art';
+        }
 
         const isPlaying = currentTrack['@attr'] && currentTrack['@attr'].nowplaying === 'true';
         const indicator = document.querySelector('.live-indicator span:last-child');
@@ -131,18 +149,19 @@
           document.querySelector('.pulse-dot').style.backgroundColor = "#555";
         }
 
-        // 2. Handle the Last 10 Tracks History List (Tracks index 1 to 9)
+        // 2. Handle the Recent History List
         const historyContainer = document.getElementById('history-container');
-        historyContainer.innerHTML = ""; // Clear out previous load
+        historyContainer.innerHTML = ""; 
 
-        // Loop through tracks from index 1 up to 9
         for (let i = 1; i < tracks.length; i++) {
           const t = tracks[i];
           const tName = t.name;
           const tArtist = t.artist['#text'];
-          const tArt = (t.image && t.image[1] && t.image[1]['#text']) 
-            ? t.image[1]['#text'] 
-            : 'https://placehold.co/40x40/111/333?text=?';
+          
+          let tArt = (t.image && t.image[1] && t.image[1]['#text']) ? t.image[1]['#text'] : '';
+          if (!tArt || tArt.includes('2a96cbd8b46e442fc41c2b86b821562f')) {
+            tArt = await getItunesArt(tArtist, tName) || 'https://placehold.co/40x40/111/333?text=?';
+          }
 
           const itemHTML = `
             <div class="history-item">
@@ -157,7 +176,7 @@
         }
 
       } catch (error) {
-        console.error("Error fetching Last.fm data:", error);
+        console.error("Error fetching music data:", error);
       }
     }
 
