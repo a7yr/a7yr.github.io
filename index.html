@@ -310,7 +310,7 @@
       <div class="subtitle">
         <span>Live music tracking bwhahaha</span>
         <span>•</span>
-        <span>Local Time: <span id="clock">12:00:00 AM</span> 🕒</span>
+        <span>Local Time: <span id="clock">--:--:--</span> 🕒</span>
       </div>
       <div style="margin-top: 10px;">
         <a href="favs.html" class="nav-link">♥ View Favorite Songs</a>
@@ -322,7 +322,7 @@
       <div class="status-display">
         <div>
           <span style="color: #90909a; font-weight: 500;">Current Mood:</span>
-          <span class="status-pill" id="liveStatusText">Loading mood...</span>
+          <span class="status-pill" id="liveStatusText">Chillin &amp; Listening 🎧</span>
         </div>
         <button class="edit-toggle-btn" id="toggleEditBtn">Edit Mood 🔒</button>
       </div>
@@ -342,8 +342,8 @@
       <div class="track-main">
         <img id="currentArt" class="album-art-lg" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='92' height='92' viewBox='0 0 92 92'><rect width='92' height='92' fill='%2315151a'/><circle cx='46' cy='46' r='18' fill='none' stroke='%23333' stroke-width='4'/></svg>" alt="Album Art" />
         <div class="track-info-lg">
-          <h2 id="currentTitle">Loading track...</h2>
-          <p id="currentArtist">Please wait</p>
+          <h2 id="currentTitle">Fetching Vibe...</h2>
+          <p id="currentArtist">Live track loading</p>
         </div>
       </div>
     </div>
@@ -354,48 +354,21 @@
       <div class="vibe-list" id="vibeHistoryList">
         <div class="vibe-item">
           <div class="track-info-sm">
-            <h4>Loading Activity...</h4>
-            <p>Fetching saved history...</p>
+            <h4>Syncing History...</h4>
+            <p>Please wait a moment</p>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { 
-      getFirestore, 
-      collection, 
-      addDoc, 
-      onSnapshot, 
-      query, 
-      orderBy, 
-      limit, 
-      serverTimestamp 
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyD6cTexajg5qthbeK3Z4lBwR-eIgojtI78",
-      authDomain: "a7yrshitvc.firebaseapp.com",
-      databaseURL: "https://a7yrshitvc-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "a7yrshitvc",
-      storageBucket: "a7yrshitvc.firebasestorage.app",
-      messagingSenderId: "383749658516",
-      appId: "1:383749658516:web:5d2fc4b5b88c4191486181",
-      measurementId: "G-HY0BJVR7WV"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
+  <script>
+    // Pure Vanilla JS Execution - Guarantee Fast & Unstuck Performance
     const LASTFM_USERNAME = "a7yr";
     const LASTFM_API_KEY = "b31d67b732b6bb6f66ca8f9c033b97c1";
     const ADMIN_PASSCODE = "aarav123";
     const RTDB_MOOD_URL = "https://a7yrshitvc-default-rtdb.asia-southeast1.firebasedatabase.app/current_mood.json";
     const CLEAN_FALLBACK_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='92' height='92' viewBox='0 0 92 92'><rect width='92' height='92' fill='%2315151a'/><circle cx='46' cy='46' r='18' fill='none' stroke='%23333' stroke-width='4'/></svg>";
-
-    let currentSavedTrackKey = "";
 
     function updateClock() {
       const now = new Date();
@@ -406,7 +379,6 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // Protected Cross-Device Universal Status Engine
     const toggleEditBtn = document.getElementById("toggleEditBtn");
     const statusInputGroup = document.getElementById("statusInputGroup");
     const statusElem = document.getElementById("liveStatusText");
@@ -429,15 +401,13 @@
     async function fetchUniversalMood() {
       try {
         const res = await fetch(RTDB_MOOD_URL);
-        const data = await res.json();
-        if (data && data.text) {
-          statusElem.innerText = data.text;
-        } else {
-          statusElem.innerText = "Chillin & Listening 🎧";
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.text) {
+            statusElem.innerText = data.text;
+          }
         }
-      } catch (e) {
-        console.warn("Mood fetch error:", e);
-      }
+      } catch (e) {}
     }
 
     async function updateCustomStatus(statusText) {
@@ -456,7 +426,7 @@
         statusInputGroup.classList.remove("active");
         toggleEditBtn.innerText = "Edit Mood 🔒";
       } catch (e) {
-        console.error("Error writing universal mood:", e);
+        console.error("Error writing mood:", e);
       }
     }
 
@@ -477,7 +447,7 @@
                              .replace(/- single|- remix/gi, '')
                              .trim();
       const cleanArtist = artist.split(/&|,|feat\.|ft\./i)[0].trim();
-      return encodeURIComponent(`${cleanTitle}${cleanArtist}`);
+      return encodeURIComponent(`${cleanTitle} ${cleanArtist}`);
     }
 
     async function getHighResCoverArt(title, artist, rawArt) {
@@ -507,28 +477,17 @@
       return CLEAN_FALLBACK_SVG;
     }
 
-    async function saveTrackToDatabase(title, artist, artUrl) {
-      try {
-        await addDoc(collection(db, "vibe_history"), {
-          title: title,
-          artist: artist,
-          artUrl: artUrl,
-          createdAt: serverTimestamp()
-        });
-      } catch (err) {
-        console.error("Firebase write error:", err);
-      }
-    }
-
     async function checkLiveLastFmTrack() {
-      const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${LASTFM_USERNAME}&api_key=${LASTFM_API_KEY}&format=json&limit=1`;
+      const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${LASTFM_USERNAME}&api_key=${LASTFM_API_KEY}&format=json&limit=5`;
 
       try {
         const res = await fetch(url);
+        if (!res.ok) return;
         const data = await res.json();
 
         if (data.recenttracks && data.recenttracks.track.length > 0) {
-          const current = data.recenttracks.track[0];
+          const tracks = data.recenttracks.track;
+          const current = tracks[0];
           const title = current.name;
           const artist = current.artist['#text'];
           const rawArt = current.image ? current.image[current.image.length - 1]['#text'] : "";
@@ -538,13 +497,28 @@
           document.getElementById('currentTitle').innerText = title;
           document.getElementById('currentArtist').innerText = artist;
 
-          const coverUrl = await getHighResCoverArt(title, artist, rawArt);
-          document.getElementById('currentArt').src = coverUrl;
+          getHighResCoverArt(title, artist, rawArt).then(coverUrl => {
+            document.getElementById('currentArt').src = coverUrl;
+          });
 
-          const trackKey = `${artist} -${title}`;
-          if (trackKey !== currentSavedTrackKey) {
-            currentSavedTrackKey = trackKey;
-            await saveTrackToDatabase(title, artist, coverUrl);
+          // Render History
+          const historyContainer = document.getElementById('vibeHistoryList');
+          if (historyContainer && tracks.length > 1) {
+            historyContainer.innerHTML = tracks.slice(1, 6).map(track => {
+              const tTitle = track.name || "Unknown Track";
+              const tArtist = track.artist ? track.artist['#text'] : "Unknown Artist";
+              const tArt = (track.image && track.image[1]['#text']) ? track.image[1]['#text'] : CLEAN_FALLBACK_SVG;
+
+              return `
+                <div class="vibe-item">
+                  <img class="album-art-sm" src="${escapeHTML(tArt)}" alt="Art" />
+                  <div class="track-info-sm">
+                    <h4>${escapeHTML(tTitle)}</h4>
+                    <p>${escapeHTML(tArtist)}</p>
+                  </div>
+                </div>
+              `;
+            }).join('');
           }
         }
       } catch (err) {
@@ -552,24 +526,17 @@
       }
     }
 
-    function listenToVibeHistoryDatabase() {
-      const q = query(collection(db, "vibe_history"), orderBy("createdAt", "desc"), limit(10));
+    function escapeHTML(str) {
+      return (str || "").replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
 
-      onSnapshot(q, (snapshot) => {
-        const container = document.getElementById('vibeHistoryList');
-        if (!container) return;
+    fetchUniversalMood();
+    checkLiveLastFmTrack();
 
-        if (snapshot.empty) {
-          container.innerHTML = "<p style='color:#666; font-size:0.9rem;'>No vibe history saved yet.</p>";
-          return;
-        }
-
-        container.innerHTML = snapshot.docs.map(doc => {
-          const data = doc.data();
-          const artUrl = data.artUrl || CLEAN_FALLBACK_SVG;
-
-          return `
-            <div class="vibe-item">
-              <img class="album-art-sm" src="${escapeHTML(artUrl)}" alt="Art" />
-              <div class="track-info-sm">
-                <h4>${escapeHTML(data.title || "Unknown Title")}</h4>
+    setInterval(fetchUniversalMood, 5000);
+    setInterval(checkLiveLastFmTrack, 8000);
+  </script>
+</body>
+</html>
