@@ -333,7 +333,7 @@
     var RTDB_HISTORY_URL = "https://a7yrshitvc-default-rtdb.asia-southeast1.firebasedatabase.app/recent_history.json";
     var CLEAN_FALLBACK_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='92' height='92' viewBox='0 0 92 92'><rect width='92' height='92' fill='%2315151a'/><circle cx='46' cy='46' r='18' fill='none' stroke='%23333' stroke-width='4'/></svg>";
 
-    // Clock Engine (Isolated)
+    // Clock Engine
     function runClock() {
       try {
         var now = new Date();
@@ -407,7 +407,7 @@
       } catch(e){}
     }
 
-    // High Reliability Cover Art Fetcher
+    // Ultra-Clean Song Name Search Fetcher (Removes Movie Tags, Brackets & Clutter)
     function fetchArtwork(title, artist, rawArt, callback) {
       try {
         if (rawArt && rawArt.indexOf("2a9b3a5c119d2a7156f7c70c778c3194") === -1 && rawArt.indexOf("star") === -1) {
@@ -415,7 +415,13 @@
           return;
         }
 
-        var cleanT = (title || "").replace(/\(.*?\)|\[.*?\]/g, "").replace(/from ".*?"/gi, "").trim();
+        // Clean title: removes movie names like (From "Devara"), brackets, ft, etc.
+        var cleanT = (title || "")
+          .replace(/\(.*?\)|\[.*?\]/g, "")
+          .replace(/from\s+["'].*?["']/gi, "")
+          .replace(/feat\.?|ft\.?/gi, "")
+          .trim();
+        
         var cleanA = (artist || "").split(/&|,/)[0].trim();
         var query = encodeURIComponent(cleanT + " " + cleanA);
 
@@ -467,7 +473,6 @@
         .then(function(data) {
           var historyList = Array.isArray(data) ? data : [];
 
-          // Unique Hashing to prevent identical consecutive tracks
           var isDuplicate = historyList.length > 0 && historyList[0].title === newTrack.title && historyList[0].artist === newTrack.artist;
 
           if (!isDuplicate) {
@@ -475,15 +480,12 @@
               newTrack.art = resolvedArt;
               delete newTrack.rawArt;
 
-              // Insert at top of queue
               historyList.unshift(newTrack);
 
-              // Maintain strict limit of 10 items (FIFO Queue)
               if (historyList.length > 10) {
                 historyList = historyList.slice(0, 10);
               }
 
-              // Update database
               fetch(RTDB_HISTORY_URL, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -531,7 +533,6 @@
                 if (artEl) artEl.src = imgSrc;
               });
 
-              // Push new track data to Firebase FIFO Queue
               pushToFirebaseHistoryStack({
                 title: title,
                 artist: artist,
@@ -544,11 +545,9 @@
       } catch(outerErr) {}
     }
 
-    // Initial load
     fetchUniversalMood();
     checkLiveLastFmTrack();
 
-    // Fetch existing history stack on page load for instant UI render
     fetch(RTDB_HISTORY_URL)
       .then(function(res){ return res.json(); })
       .then(function(data){
