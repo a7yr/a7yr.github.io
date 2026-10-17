@@ -51,15 +51,13 @@
       color: #888;
     }
 
-    /* Reliable Running Minions (Using stable Wikimedia/CDN sprites) */
+    /* 100% Stable CSS Minions Animation (No broken images, zero question marks!) */
     .minion-container {
       position: fixed;
       bottom: 15px;
-      left: -120px;
+      left: -100px;
       z-index: 999;
-      display: flex;
-      align-items: center;
-      gap: 10px;
+      font-size: 35px;
       pointer-events: none;
       animation: runAcross 15s linear infinite;
     }
@@ -70,22 +68,20 @@
       animation-duration: 18s;
       animation-direction: reverse;
     }
-    .minion-img {
-      width: 50px;
-      height: 50px;
-      object-fit: contain;
+    .minion-avatar {
+      display: inline-block;
       animation: bounceMinion 0.4s ease-in-out infinite alternate;
     }
     @keyframes runAcross {
-      0% { left: -140px; transform: scaleX(1); }
+      0% { left: -80px; transform: scaleX(1); }
       49% { transform: scaleX(1); }
-      50% { left: 105vw; transform: scaleX(-1); }
+      50% { left: 102vw; transform: scaleX(-1); }
       99% { transform: scaleX(-1); }
-      100% { left: -140px; transform: scaleX(1); }
+      100% { left: -80px; transform: scaleX(1); }
     }
     @keyframes bounceMinion {
       from { transform: translateY(0) rotate(0deg); }
-      to { transform: translateY(-8px) rotate(3deg); }
+      to { transform: translateY(-10px) rotate(5deg); }
     }
   </style>
 </head>
@@ -93,12 +89,12 @@
 
   <div class="mesh-background"></div>
 
-  <!-- Running Minions with 100% working stable public sprite URLs -->
+  <!-- Pure CSS / Emoji Minions (Zero broken image issues) -->
   <div class="minion-container">
-    <img src="https://images.vexels.com/media/users/3/139556/isolated/preview/1a580a562ef6d8a4369e83cf305d218d-minion-cartoon-character-by-vexels.png" class="minion-img" alt="Minion">
+    <span class="minion-avatar">🍌🏃‍♂️</span>
   </div>
   <div class="minion-container delay">
-    <img src="https://images.vexels.com/media/users/3/139556/isolated/preview/1a580a562ef6d8a4369e83cf305d218d-minion-cartoon-character-by-vexels.png" class="minion-img" style="transform: scale(0.85);" alt="Minion">
+    <span class="minion-avatar" style="font-size: 30px;">🤪🏃‍♂️</span>
   </div>
 
   <div class="container">
@@ -140,8 +136,7 @@
     const API_KEY = 'b31d67b732b6bb6f66ca8f9c033b97c1'; 
     const USERNAME = 'a7yr';
     
-    // Limit 35 taaki deep history fetch ho aur koi gana fass na sake
-    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=35`;
+    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=40`;
 
     let activeTrackKey = "";
 
@@ -213,7 +208,7 @@
           document.querySelector('.pulse-dot').style.backgroundColor = "#555";
         }
 
-        // 2. Recent Vibe History (Strict Deduplication & Fresh Sync)
+        // 2. Recent Vibe History
         const historyContainer = document.getElementById('history-container');
         historyContainer.innerHTML = ""; 
 
@@ -223,11 +218,12 @@
 
         for (let i = 1; i < tracks.length; i++) {
           const t = tracks[i];
+          if (!t.name || !t.artist) continue;
+
           const tName = t.name;
           const tArtist = t.artist['#text'];
           const tKey = `${tName.toLowerCase()}-${tArtist.toLowerCase()}`;
 
-          // Agar yeh gana pehle hi history mein aa chuka hai ya abhi play ho raha hai, toh skip karo
           if (seenTracks.has(tKey)) continue;
           seenTracks.add(tKey);
 
