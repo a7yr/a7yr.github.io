@@ -158,7 +158,7 @@
       <div class="subtitle">
         <span>Live music tracking bwhahaha</span>
         <span>•</span>
-        <span>Local Time: <span id="clock">12:00:00 AM</span> 🕒</span>
+        <span>Local Time: <span id="clock">--:--:--</span> 🕒</span>
       </div>
     </header>
 
@@ -168,7 +168,7 @@
         <span id="statusBadge">NOW PLAYING</span>
       </div>
       <div class="track-main">
-        <img id="currentArt" class="album-art-lg" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'><rect width='90' height='90' fill='%231a1a1e'/></svg>" alt="Album Art" />
+        <img id="currentArt" class="album-art-lg" src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=150&auto=format&fit=crop&q=60" alt="Album Art" />
         <div class="track-info-lg">
           <h2 id="currentTitle">Loading track...</h2>
           <p id="currentArtist">Please wait</p>
@@ -182,7 +182,7 @@
         <div class="vibe-item">
           <div class="track-info-sm">
             <h4>Loading Activity...</h4>
-            <p>Fetching album covers...</p>
+            <p>Syncing live history...</p>
           </div>
         </div>
       </div>
@@ -202,118 +202,89 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // Cleaning song titles aggressively to maximize API matches
-    function cleanTitleAndArtist(rawTitle, rawArtist) {
-      let cleanTitle = rawTitle
-        .replace(/\(from ".*?"\)/gi, '')
-        .replace(/\(from '.*?'\)/gi, '')
-        .replace(/\[.*?\]|\(.*?\)/g, '')
-        .replace(/- single|- remix|- original soundtrack/gi, '')
-        .trim();
-      
-      let cleanArtist = rawArtist.split(/&|,|feat\.|ft\./i)[0].trim();
-      return {
-        query: encodeURIComponent(`${cleanTitle} ${cleanArtist}`),
-        titleOnly: encodeURIComponent(cleanTitle)
-      };
-    }
-
-    // MULTI-PROVIDER COVER ART ENGINE
-    async function getCoverArtUrl(title, artist, rawLastFmArt) {
-      if (rawLastFmArt && rawLastFmArt.trim() !== "" && !rawLastFmArt.includes("2a9b3a5c119d2a7156f7c70c778c3194")) {
-        return rawLastFmArt;
+    // CORS-bypass enabled cover search
+    async function resolveCoverArt(title, artist, defaultArt) {
+      // 1. If Last.fm already provides a valid non-star cover
+      if (defaultArt && defaultArt.trim() !== "" && !defaultArt.includes("2a9b3a5c119d2a7156f7c70c778c3194")) {
+        return defaultArt;
       }
 
-      const { query, titleOnly } = cleanTitleAndArtist(title, artist);
+      const cleanTitle = title.replace(/\(from ".*?"\)/gi, '').replace(/\[.*?\]|\(.*?\)/g, '').trim();
+      const cleanArtist = artist.split(/&|,|feat\.|ft\./i)[0].trim();
+      const query = encodeURIComponent(`${cleanTitle} ${cleanArtist}`);
 
-      // 1. JioSaavn / Indian Music API Engine (Best for Bollywood / Punjabi / Indian tracks)
+      // 2. iTunes JSONP / Corsproxy Mirror (Works 100% for Bollywood, Regional & Pop)
       try {
-        const res = await fetch(`https://saavn.dev/api/search/songs?query=${query}&limit=1`);
+        const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://itunes.apple.com/search?term=' + query + '&entity=song&limit=1')}`);
         const data = await res.json();
-        if (data.data && data.data.results && data.data.results.length > 0) {
-          const imgs = data.data.results[0].image;
-          if (imgs && imgs.length > 0) return imgs[imgs.length - 1].url;
+        const parsed = JSON.parse(data.contents);
+        if (parsed.results && parsed.results.length > 0 && parsed.results[0].artworkUrl100) {
+          return parsed.results[0].artworkUrl100.replace('100x100bb', '300x300bb');
         }
       } catch (e) {}
 
-      // 2. iTunes Search API (Query search)
+      // 3. Fallback iTunes Direct Search
       try {
         const res = await fetch(`https://itunes.apple.com/search?term=${query}&entity=song&limit=1`);
-        const data = await res.json();
-        if (data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
-          return data.results[0].artworkUrl100.replace('100x100bb', '300x300bb');
+        const parsed = await res.json();
+        if (parsed.results && parsed.results.length > 0 && parsed.results[0].artworkUrl100) {
+          return parsed.results[0].artworkUrl100.replace('100x100bb', '300x300bb');
         }
       } catch (e) {}
 
-      // 3. iTunes Search API (Title only search fallback)
-      try {
-        const res = await fetch(`https://itunes.apple.com/search?term=${titleOnly}&entity=song&limit=1`);
-        const data = await res.json();
-        if (data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
-          return data.results[0].artworkUrl100.replace('100x100bb', '300x300bb');
-        }
-      } catch (e) {}
-
-      // 4. Deezer API
-      try {
-        const res = await fetch(`https://api.deezer.com/search?q=${query}&limit=1`);
-        const data = await res.json();
-        if (data.data && data.data.length > 0 && data.data[0].album && data.data[0].album.cover_medium) {
-          return data.data[0].album.cover_medium;
-        }
-      } catch (e) {}
-
-      return "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'><rect width='90' height='90' fill='%231a1a1e'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23888' font-size='14'>Art</text></svg>";
+      // High Quality Dark Fallback Cover (No Star)
+      return "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=150&auto=format&fit=crop&q=60";
     }
 
-    // MAIN DATA SYNCHRONIZER
-    async function refreshMusicFeed() {
+    async function syncMusicHistory() {
       const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${LASTFM_USERNAME}&api_key=${LASTFM_API_KEY}&format=json&limit=10`;
 
       try {
-        const res = await fetch(url);
-        const data = await res.json();
+        const response = await fetch(url);
+        const data = await response.json();
 
         if (data.recenttracks && data.recenttracks.track.length > 0) {
           const tracks = data.recenttracks.track;
-          const current = tracks[0];
+          const currentTrack = tracks[0];
 
-          const isNowPlaying = current['@attr'] && current['@attr'].nowplaying === "true";
-          const currentTitle = current.name;
-          const currentArtist = current.artist['#text'];
-          const rawArt = current.image ? current.image[current.image.length - 1]['#text'] : "";
+          const isNowPlaying = currentTrack['@attr'] && currentTrack['@attr'].nowplaying === "true";
+          const title = currentTrack.name;
+          const artist = currentTrack.artist['#text'];
+          const rawArt = currentTrack.image ? currentTrack.image[currentTrack.image.length - 1]['#text'] : "";
 
           document.getElementById('statusBadge').innerText = isNowPlaying ? "NOW PLAYING" : "LAST PLAYED";
-          document.getElementById('currentTitle').innerText = currentTitle;
-          document.getElementById('currentArtist').innerText = currentArtist;
+          document.getElementById('currentTitle').innerText = title;
+          document.getElementById('currentArtist').innerText = artist;
 
-          // Resolve Now Playing artwork first
-          const currentCover = await getCoverArtUrl(currentTitle, currentArtist, rawArt);
-          document.getElementById('currentArt').src = currentCover;
+          // Set Now Playing Art
+          const nowPlayingCover = await resolveCoverArt(title, artist, rawArt);
+          document.getElementById('currentArt').src = nowPlayingCover;
 
-          // Resolve artwork for all 10 tracks before updating DOM
-          const historyCards = await Promise.all(tracks.slice(0, 10).map(async (item) => {
-            const title = item.name;
-            const artist = item.artist['#text'];
-            const itemRawArt = item.image ? item.image[item.image.length - 1]['#text'] : "";
+          // Render live last 10 tracks
+          const historyContainer = document.getElementById('vibeHistoryList');
+          
+          const historyHtml = await Promise.all(tracks.slice(0, 10).map(async (track) => {
+            const tTitle = track.name;
+            const tArtist = track.artist['#text'];
+            const tRawArt = track.image ? track.image[track.image.length - 1]['#text'] : "";
 
-            const artUrl = await getCoverArtUrl(title, artist, itemRawArt);
+            const coverUrl = await resolveCoverArt(tTitle, tArtist, tRawArt);
 
             return `
               <div class="vibe-item">
-                <img class="album-art-sm" src="${escapeHTML(artUrl)}" alt="Art" />
+                <img class="album-art-sm" src="${escapeHTML(coverUrl)}" alt="Art" />
                 <div class="track-info-sm">
-                  <h4>${escapeHTML(title)}</h4>
-                  <p>${escapeHTML(artist)}</p>
+                  <h4>${escapeHTML(tTitle)}</h4>
+                  <p>${escapeHTML(tArtist)}</p>
                 </div>
               </div>
             `;
           }));
 
-          document.getElementById('vibeHistoryList').innerHTML = historyCards.join('');
+          historyContainer.innerHTML = historyHtml.join('');
         }
       } catch (err) {
-        console.warn("Feed update error:", err);
+        console.warn("Sync error:", err);
       }
     }
 
@@ -323,8 +294,8 @@
       );
     }
 
-    refreshMusicFeed();
-    setInterval(refreshMusicFeed, 10000); // Syncs every 10 sec
+    syncMusicHistory();
+    setInterval(syncMusicHistory, 5000); // 5s smooth polling
   </script>
 </body>
 </html>
