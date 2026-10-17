@@ -103,9 +103,8 @@
 
     let activeTrackKey = "";
     let trackDurationSec = 0;
-    let trackStartTimeEpoch = 0;
+    let currentElapsedSec = 0; // Local counter jo reset nahi hoga
     let isTrackPlaying = false;
-    let pausedElapsedTime = 0;
 
     function formatTime(seconds) {
       if (isNaN(seconds) || seconds < 0) return "0:00";
@@ -140,7 +139,6 @@
         const tracks = data.recenttracks.track;
         if (!tracks || tracks.length === 0) return;
 
-        // Find the active track: check if any of the top tracks is flagged as now playing
         let currentTrack = tracks[0];
         let playingIndex = 0;
 
@@ -158,17 +156,10 @@
         
         isTrackPlaying = currentTrack['@attr'] && currentTrack['@attr'].nowplaying === 'true';
 
-        // Establish start time
-        if (currentTrack.date && currentTrack.date.uts) {
-          trackStartTimeEpoch = parseInt(currentTrack.date.uts, 10);
-        } else {
-          trackStartTimeEpoch = Math.floor(Date.now() / 1000);
-        }
-
-        // Only reload details if the track actually changed
+        // Sirf tabhi details load karo aur timer reset karo jab GAANA SACH MEIN BADLA ho!
         if (trackUniqueKey !== activeTrackKey) {
           activeTrackKey = trackUniqueKey;
-          pausedElapsedTime = 0; 
+          currentElapsedSec = 0; // Naya gaana aane par hi 0 hoga
           document.getElementById('song-title').innerText = trackName;
           document.getElementById('artist-name').innerText = artistName;
 
@@ -196,14 +187,14 @@
           document.querySelector('.pulse-dot').style.backgroundColor = "#555";
         }
 
-        // Render History List (skip the main active track to prevent duplication)
+        // Render History List
         const historyContainer = document.getElementById('history-container');
         historyContainer.innerHTML = ""; 
 
         let historyCount = 0;
         for (let i = 0; i < tracks.length; i++) {
-          if (i === playingIndex) continue; // Skip the currently displayed main track
-          if (historyCount >= 10) break; // Limit to 10 history items
+          if (i === playingIndex) continue; 
+          if (historyCount >= 10) break; 
 
           const t = tracks[i];
           let tArt = (t.image && t.image[1] && t.image[1]['#text']) ? t.image[1]['#text'] : 'https://placehold.co/40x40/111/333?text=?';
@@ -225,31 +216,25 @@
       }
     }
 
+    // Har 1 second mein local counter chalega, API refresh hone se reset nahi hoga!
     function updateProgressAnimation() {
-      if (trackDurationSec > 0) {
-        let elapsedSec = 0;
-
-        if (isTrackPlaying) {
-          const nowEpoch = Math.floor(Date.now() / 1000);
-          elapsedSec = nowEpoch - trackStartTimeEpoch;
-          if (elapsedSec < 0) elapsedSec = 0;
-          if (elapsedSec > trackDurationSec) elapsedSec = trackDurationSec;
-          pausedElapsedTime = elapsedSec;
-        } else {
-          elapsedSec = pausedElapsedTime;
+      if (trackDurationSec > 0 && isTrackPlaying) {
+        currentElapsedSec++;
+        if (currentElapsedSec > trackDurationSec) {
+          currentElapsedSec = trackDurationSec;
         }
-        
-        let progressPercent = (elapsedSec / trackDurationSec) * 100;
-        if (progressPercent > 100) progressPercent = 100;
-
-        document.getElementById('progress-fill').style.width = `${progressPercent}%`;
-        document.getElementById('current-time').innerText = formatTime(elapsedSec);
       }
+
+      let progressPercent = (currentElapsedSec / trackDurationSec) * 100;
+      if (progressPercent > 100) progressPercent = 100;
+
+      document.getElementById('progress-fill').style.width = `${progressPercent}%`;
+      document.getElementById('current-time').innerText = formatTime(currentElapsedSec);
     }
 
     getLiveSongs();
-    setInterval(getLiveSongs, 10000); 
-    setInterval(updateProgressAnimation, 1000); 
+    setInterval(getLiveSongs, 10000); // Last.fm status check every 10s
+    setInterval(updateProgressAnimation, 1000); // Smooth 1-sec tick locally
   </script>
 </body>
 </html>
