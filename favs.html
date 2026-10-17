@@ -142,12 +142,11 @@
     </header>
 
     <div class="fav-list" id="favList">
-      <!-- Cards render dynamically -->
+      <!-- Dynamically rendered -->
     </div>
   </div>
 
   <script>
-    // Apne Favorite Songs ki list yahan modify kar sakte ho!
     const FAVORITE_SONGS = [
       {
         title: "Judas",
@@ -192,16 +191,16 @@
       const container = document.getElementById('favList');
       const songsData = await Promise.all(FAVORITE_SONGS.map(fetchTrackData));
 
-      container.innerHTML = songsData.map((song, index) => `
+      container.innerHTML = songsData.map((song) => `
         <div class="fav-card">
           <div class="track-header">
             <img class="album-art" src="${song.artUrl}" alt="${song.title}" />
             <div class="track-details">
-              <h3>${song.title}</h3>
-              <p>${song.artist}</p>
+              <h3>${escapeHTML(song.title)}</h3>
+              <p>${escapeHTML(song.artist)}</p>
             </div>
           </div>
-          <div class="lyric-box">${song.line}</div>
+          <div class="lyric-box">${escapeHTML(song.line)}</div>
           ${song.previewUrl ? `
             <button class="play-btn" onclick="toggleAudio('${song.previewUrl}', this)">
               ▶ Play Snippet
@@ -231,6 +230,13 @@
       };
     }
 
+    function escapeHTML(str) {
+      return (str || "").replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+
+    window.toggleAudio = toggleAudio;
     renderFavs();
   </script>
 </body>
