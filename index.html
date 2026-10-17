@@ -7,6 +7,13 @@
   <link rel="stylesheet" href="style.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <style>
+    .live-time {
+      font-size: 13px;
+      color: #888;
+      margin-top: 4px;
+      font-weight: 500;
+    }
+
     .history-list {
       margin-top: 20px;
       display: flex;
@@ -43,16 +50,63 @@
       margin: 2px 0 0 0;
       color: #888;
     }
+
+    /* Minions Running Around */
+    .minion-container {
+      position: fixed;
+      bottom: 10px;
+      left: -100px;
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      pointer-events: none;
+      animation: runAcross 14s linear infinite;
+    }
+    .minion-container.delay {
+      animation-delay: 7s;
+      bottom: auto;
+      top: 15px;
+      animation-duration: 18s;
+      animation-direction: reverse;
+    }
+    .minion {
+      width: 55px;
+      height: 55px;
+      object-fit: contain;
+      animation: bounceMinion 0.5s ease-in-out infinite alternate;
+    }
+    @keyframes runAcross {
+      0% { left: -120px; transform: scaleX(1); }
+      49% { transform: scaleX(1); }
+      50% { left: 105vw; transform: scaleX(-1); }
+      99% { transform: scaleX(-1); }
+      100% { left: -120px; transform: scaleX(1); }
+    }
+    @keyframes bounceMinion {
+      from { transform: translateY(0) rotate(0deg); }
+      to { transform: translateY(-8px) rotate(3deg); }
+    }
   </style>
 </head>
 <body>
 
   <div class="mesh-background"></div>
 
+  <!-- Minions Running Around -->
+  <div class="minion-container">
+    <img src="https://api.iconify.design/fluent-emoji:banana.svg" class="minion" style="width: 30px; height: 30px;" alt="Banana">
+    <img src="https://api.iconify.design/noto:minion.svg" class="minion" alt="Minion">
+  </div>
+  <div class="minion-container delay">
+    <img src="https://api.iconify.design/noto:minion.svg" class="minion" style="transform: scale(0.8);" alt="Minion">
+  </div>
+
   <div class="container">
     <header>
       <h1>Aarav is Vibing to <3</h1>
       <p>Live music tracking bwhahaha</p>
+      <div id="realtime-clock" class="live-time">Loading time...</div>
     </header>
 
     <main>
@@ -87,21 +141,34 @@
     const API_KEY = 'b31d67b732b6bb6f66ca8f9c033b97c1'; 
     const USERNAME = 'a7yr';
     
-    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=5`;
+    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=12`;
 
     let activeTrackKey = "";
-    let localSongHistory = []; // Browser memory jo har naye gaane ko turant top par add karegi
 
-    async function getItunesArt(artist, song) {
+    // Live Clock
+    function updateClock() {
+      const now = new Date();
+      let hours = now.getHours();
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      const seconds = now.getSeconds().toString().padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12 || 12;
+      document.getElementById('realtime-clock').innerText = `Local Time: ${hours}:${minutes}:${seconds} ${ampm} 🕒`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Multi-Source Album Art Finder
+    async function getBestAlbumArt(artist, song) {
       try {
         const query = encodeURIComponent(`${artist} ${song}`);
         const res = await fetch(`https://itunes.apple.com/search?term=${query}&entity=song&limit=1`);
         const data = await res.json();
-        if (data.results && data.results.length > 0) {
-          return data.results[0].artworkUrl100.replace('100x100bb', '300x300bb');
+        if (data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
+          return data.results[0].artworkUrl100.replace('100x100bb', '400x400bb');
         }
       } catch (e) {
-        console.error("iTunes fetch failed", e);
+        console.error("iTunes art fetch failed", e);
       }
       return null;
     }
@@ -114,30 +181,14 @@
         const tracks = data.recenttracks.track;
         if (!tracks || tracks.length === 0) return;
 
+        // 1. Main Current Track
         const currentTrack = tracks[0];
         const trackName = currentTrack.name;
         const artistName = currentTrack.artist['#text'];
         const trackUniqueKey = `${trackName}-${artistName}`;
-        
         const isPlaying = currentTrack['@attr'] && currentTrack['@attr'].nowplaying === 'true';
 
-        // Agar gaana change hua hai, toh main card update karo aur purane wale ko history mein daal do!
         if (trackUniqueKey !== activeTrackKey) {
-          
-          // Agar pehle se koi active track tha, toh usko history ke top par push kar do
-          if (activeTrackKey !== "") {
-            const prevTitle = document.getElementById('song-title').innerText;
-            const prevArtist = document.getElementById('artist-name').innerText;
-            const prevArt = document.getElementById('album-art').src;
-
-            // Check karo ki history mein already na ho taaki duplicate na bane
-            const exists = localSongHistory.some(item => item.title === prevTitle && item.artist === prevArtist);
-            if (!exists) {
-              localSongHistory.unshift({ title: prevTitle, artist: prevArtist, art: prevArt });
-              if (localSongHistory.length > 10) localSongHistory.pop(); // Sirf last 10 rakho
-            }
-          }
-
           activeTrackKey = trackUniqueKey;
           document.getElementById('song-title').innerText = trackName;
           document.getElementById('artist-name').innerText = artistName;
@@ -146,14 +197,11 @@
             ? currentTrack.image[3]['#text'] 
             : '';
 
-          if (!artUrl || artUrl.includes('2a96cbd8b46e442fc41c2b86b821562f')) {
-            artUrl = await getItunesArt(artistName, trackName) || 'https://placehold.co/150x150/111/333?text=No+Art';
+          if (!artUrl || artUrl.includes('2a96cbd8b46e442fc41c2b86b821562f') || artUrl === '') {
+            artUrl = await getBestAlbumArt(artistName, trackName) || 'https://placehold.co/150x150/111/333?text=No+Art';
           }
           
           document.getElementById('album-art').src = artUrl;
-          
-          // Render history instantly
-          renderHistory();
         }
 
         const indicatorText = document.getElementById('status-text');
@@ -165,52 +213,44 @@
           document.querySelector('.pulse-dot').style.backgroundColor = "#555";
         }
 
+        // 2. Recent Vibe History (Synced across all devices via Last.fm Cloud API)
+        const historyContainer = document.getElementById('history-container');
+        historyContainer.innerHTML = ""; 
+
+        let historyCount = 0;
+        let seenTracks = new Set();
+        seenTracks.add(`${trackName.toLowerCase()}-${artistName.toLowerCase()}`);
+
+        for (let i = 1; i < tracks.length; i++) {
+          const t = tracks[i];
+          const tName = t.name;
+          const tArtist = t.artist['#text'];
+          const tKey = `${tName.toLowerCase()}-${tArtist.toLowerCase()}`;
+
+          if (seenTracks.has(tKey)) continue;
+          seenTracks.add(tKey);
+
+          if (historyCount >= 10) break;
+
+          let tArt = (t.image && t.image[1] && t.image[1]['#text']) ? t.image[1]['#text'] : '';
+          if (!tArt || tArt.includes('2a96cbd8b46e442fc41c2b86b821562f') || tArt === '') {
+            tArt = await getBestAlbumArt(tArtist, tName) || 'https://placehold.co/45x45/111/333?text=?';
+          }
+
+          historyContainer.innerHTML += `
+            <div class="history-item">
+              <img src="${tArt}" alt="Art">
+              <div class="history-info">
+                <h4>${tName}</h4>
+                <p>${tArtist}</p>
+              </div>
+            </div>
+          `;
+          historyCount++;
+        }
+
       } catch (error) {
         console.error("Error fetching music data:", error);
-      }
-    }
-
-    // Local history list ko screen par render karne ka function
-    function renderHistory() {
-      const historyContainer = document.getElementById('history-container');
-      if (localSongHistory.length === 0) {
-        historyContainer.innerHTML = `<p style="color: #666; font-size: 14px;">Play next song to build history...</p>`;
-        return;
-      }
-
-      historyContainer.innerHTML = "";
-      localSongHistoryforEach = localSongHistory.forEach(song => {
-        historyContainer.innerHTML += `
-          <div class="history-item">
-            <img src="${song.art}" alt="Art">
-            <div class="history-info">
-              <h4>${song.title}</h4>
-              <p>${song.artist}</p>
-            </div>
-          </div>
-        `;
-      });
-    }
-
-    // Fix for syntax safety in loop
-    function renderHistory() {
-      const historyContainer = document.getElementById('history-container');
-      if (localSongHistory.length === 0) {
-        historyContainer.innerHTML = `<p style="color: #666; font-size: 14px;">Play next song to build history...</p>`;
-        return;
-      }
-
-      historyContainer.innerHTML = "";
-      for (let song of localSongHistory) {
-        historyContainer.innerHTML += `
-          <div class="history-item">
-            <img src="${song.art}" alt="Art">
-            <div class="history-info">
-              <h4>${song.title}</h4>
-              <p>${song.artist}</p>
-            </div>
-          </div>
-        `;
       }
     }
 
