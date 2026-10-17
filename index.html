@@ -82,7 +82,8 @@
     const API_KEY = 'b31d67b732b6bb6f66ca8f9c033b97c1'; 
     const USERNAME = 'a7yr';
     
-    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=11`;
+    // Limit 20 kar diya hai taaki naye gaane deep fetch hokar history mein turant dikhein
+    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=20`;
 
     let activeTrackKey = "";
 
@@ -108,7 +109,6 @@
         const tracks = data.recenttracks.track;
         if (!tracks || tracks.length === 0) return;
 
-        // Sabse pehla track current/recent maana jayega
         const currentTrack = tracks[0];
         const trackName = currentTrack.name;
         const artistName = currentTrack.artist['#text'];
@@ -116,7 +116,7 @@
         
         const isPlaying = currentTrack['@attr'] && currentTrack['@attr'].nowplaying === 'true';
 
-        // Main card ki details update karo agar track change hua ho
+        // Main card update
         if (trackUniqueKey !== activeTrackKey) {
           activeTrackKey = trackUniqueKey;
           document.getElementById('song-title').innerText = trackName;
@@ -142,14 +142,26 @@
           document.querySelector('.pulse-dot').style.backgroundColor = "#555";
         }
 
-        // Recent Vibe History render karo (index 1 se start karke taaki saare pichle gaane aayein aur art bhi mile)
+        // Recent Vibe History render (Dynamic aur fresh tracks ke sath)
         const historyContainer = document.getElementById('history-container');
         historyContainer.innerHTML = ""; 
+
+        let historyCount = 0;
+        let seenTracks = new Set();
+        // Main current song ko set mein daal do taaki wo history mein repeat na ho
+        seenTracks.add(`${trackName.toLowerCase()}-${artistName.toLowerCase()}`);
 
         for (let i = 1; i < tracks.length; i++) {
           const t = tracks[i];
           const tName = t.name;
           const tArtist = t.artist['#text'];
+          const tKey = `${tName.toLowerCase()}-${tArtist.toLowerCase()}`;
+
+          // Duplicate gaane skip karo
+          if (seenTracks.has(tKey)) continue;
+          seenTracks.add(tKey);
+
+          if (historyCount >= 10) break; // Sirf top 10 unique recent tracks dikhao
 
           let tArt = (t.image && t.image[1] && t.image[1]['#text']) ? t.image[1]['#text'] : '';
           if (!tArt || tArt.includes('2a96cbd8b46e442fc41c2b86b821562f')) {
@@ -165,6 +177,7 @@
               </div>
             </div>
           `;
+          historyCount++;
         }
 
       } catch (error) {
@@ -173,7 +186,7 @@
     }
 
     getLiveSongs();
-    setInterval(getLiveSongs, 8000); 
+    setInterval(getLiveSongs, 6000); // Har 6 seconds mein fresh check karega taaki history turant update ho
   </script>
 </body>
 </html>
