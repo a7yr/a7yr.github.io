@@ -103,8 +103,9 @@
 
     let activeTrackKey = "";
     let trackDurationSec = 0;
-    let currentElapsedSec = 0; // Local counter jo reset nahi hoga
+    let trackStartEpoch = 0;
     let isTrackPlaying = false;
+    let frozenElapsedSec = 0; // Yeh pause hone par exact second ko pakad ke rakhega
 
     function formatTime(seconds) {
       if (isNaN(seconds) || seconds < 0) return "0:00";
@@ -154,14 +155,20 @@
         const artistName = currentTrack.artist['#text'];
         const trackUniqueKey = `${trackName}-${artistName}`;
         
-        isTrackPlaying = currentTrack['@attr'] && currentTrack['@attr'].nowplaying === 'true';
+        const currentlyPlayingFlag = currentTrack['@attr'] && currentTrack['@attr'].nowplaying === 'true';
 
-        // Sirf tabhi details load karo aur timer reset karo jab GAANA SACH MEIN BADLA ho!
+        // Agar gaana change hua hai toh naya start time set karo
         if (trackUniqueKey !== activeTrackKey) {
           activeTrackKey = trackUniqueKey;
-          currentElapsedSec = 0; // Naya gaana aane par hi 0 hoga
           document.getElementById('song-title').innerText = trackName;
           document.getElementById('artist-name').innerText = artistName;
+
+          if (currentTrack.date && currentTrack.date.uts) {
+            trackStartEpoch = parseInt(currentTrack.date.uts, 10);
+          } else {
+            trackStartEpoch = Math.floor(Date.now() / 1000);
+          }
+          frozenElapsedSec = 0;
 
           let artUrl = (currentTrack.image && currentTrack.image[3] && currentTrack.image[3]['#text']) 
             ? currentTrack.image[3]['#text'] 
@@ -177,6 +184,9 @@
           trackDurationSec = itunes.duration;
           document.getElementById('total-duration').innerText = formatTime(trackDurationSec);
         }
+
+        // Status check: Agar Last.fm abhi bhi 'nowplaying' bol raha hai toh play maano
+        isTrackPlaying = currentlyPlayingFlag;
 
         const indicatorText = document.getElementById('status-text');
         if (isTrackPlaying) {
@@ -216,16 +226,25 @@
       }
     }
 
-    // Har 1 second mein local counter chalega, API refresh hone se reset nahi hoga!
+    // Real-time progress bar jo pause hone par wahin ruk jaye aur play par wapas chale
     function updateProgressAnimation() {
-      if (trackDurationSec > 0 && isTrackPlaying) {
-        currentElapsedSec++;
+      let currentElapsedSec = 0;
+
+      if (isTrackPlaying && trackStartEpoch > 0) {
+        // Real-time calculation based on actual epoch time elapsed
+        const nowEpoch = Math.floor(Date.now() / 1000);
+        currentElapsedSec = nowEpoch - trackStartEpoch;
+        
         if (currentElapsedSec > trackDurationSec) {
           currentElapsedSec = trackDurationSec;
         }
+        frozenElapsedSec = currentElapsedSec; // Save current position
+      } else {
+        // Jab pause ho, toh last frozen second ko pakad ke rakho (agey nahi badhega)
+        currentElapsedSec = frozenElapsedSec;
       }
 
-      let progressPercent = (currentElapsedSec / trackDurationSec) * 100;
+      let progressPercent = trackDurationSec > 0 ? (currentElapsedSec / trackDurationSec) * 100 : 0;
       if (progressPercent > 100) progressPercent = 100;
 
       document.getElementById('progress-fill').style.width = `${progressPercent}%`;
@@ -233,8 +252,8 @@
     }
 
     getLiveSongs();
-    setInterval(getLiveSongs, 10000); // Last.fm status check every 10s
-    setInterval(updateProgressAnimation, 1000); // Smooth 1-sec tick locally
+    setInterval(getLiveSongs, 8000); // Check Last.fm frequently for play/pause state
+    setInterval(updateProgressAnimation, 1000); // UI tick every 1s
   </script>
 </body>
 </html>
