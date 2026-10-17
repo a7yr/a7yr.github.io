@@ -1,252 +1,355 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AaravReallyGoneCrazy</title>
-  <link rel="stylesheet" href="style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aarav is Vibing to <3</title>
   <style>
-    .live-time {
-      font-size: 13px;
-      color: #888;
-      margin-top: 4px;
-      font-weight: 500;
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
-    .history-list {
-      margin-top: 20px;
+    body {
+      background-color: #050505;
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      padding: 40px 15px;
+      min-height: 100vh;
+    }
+
+    .wrapper {
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 25px;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      color: #a0a0a0;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    /* Card Base */
+    .card {
+      background: #0f0f11;
+      border: 1px solid #1a1a1e;
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    /* Currently Playing Card */
+    .now-playing-card {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      color: #8e8e93;
+      text-transform: uppercase;
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      background-color: #e50914;
+      border-radius: 50%;
+    }
+
+    .track-main {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .album-art-lg {
+      width: 90px;
+      height: 90px;
+      border-radius: 10px;
+      background: #1a1a1e;
+      object-fit: cover;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #555;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+    }
+
+    .track-info-lg h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 4px;
+    }
+
+    .track-info-lg p {
+      color: #a0a0a0;
+      font-size: 0.95rem;
+    }
+
+    /* Recent Vibe History Section */
+    .history-section h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 15px;
+    }
+
+    .vibe-list {
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
-    .history-item {
+
+    .vibe-item {
+      background: #0f0f11;
+      border: 1px solid #18181c;
+      border-radius: 12px;
+      padding: 12px 14px;
       display: flex;
       align-items: center;
-      gap: 12px;
-      background: rgba(255, 255, 255, 0.03);
-      padding: 8px 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      animation: fadeIn 0.4s ease-in-out;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-5px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .history-item img {
-      width: 45px;
-      height: 45px;
-      border-radius: 6px;
-      object-fit: cover;
-    }
-    .history-info h4 {
-      font-size: 14px;
-      margin: 0;
-      color: #fff;
-    }
-    .history-info p {
-      font-size: 12px;
-      margin: 2px 0 0 0;
-      color: #888;
+      gap: 14px;
     }
 
-    /* 2D Spider-Man Swinging Animation */
-    .spidey-container {
-      position: fixed;
-      top: 10px;
-      left: -100px;
-      z-index: 999;
-      pointer-events: none;
-      animation: webSwing 12s linear infinite;
+    .album-art-sm {
+      width: 48px;
+      height: 48px;
+      border-radius: 6px;
+      background: #1a1a1e;
+      object-fit: cover;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #555;
+      font-size: 0.75rem;
+      font-weight: 600;
+      flex-shrink: 0;
     }
-    .spidey-icon {
-      font-size: 40px;
-      display: inline-block;
-      animation: spideyFlip 12s linear infinite;
+
+    .track-info-sm h4 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 2px;
     }
-    @keyframes webSwing {
-      0% { left: -100px; transform: translateY(0); }
-      25% { transform: translateY(40px); }
-      50% { left: 50vw; transform: translateY(0); }
-      75% { transform: translateY(40px); }
-      100% { left: 105vw; transform: translateY(0); }
-    }
-    @keyframes spideyFlip {
-      0%, 49% { transform: scaleX(1) rotate(-15deg); }
-      50%, 100% { transform: scaleX(-1) rotate(15deg); }
+
+    .track-info-sm p {
+      color: #888888;
+      font-size: 0.82rem;
     }
   </style>
 </head>
 <body>
 
-  <div class="mesh-background"></div>
-
-  <!-- 2D Spider-Man Swinging across the website -->
-  <div class="spidey-container">
-    <span class="spidey-icon">🕷️🕸️</span>
-  </div>
-
-  <div class="container">
+  <div class="wrapper">
+    <!-- Header -->
     <header>
-      <h1>Aarav is Vibing to <3</h1>
-      <p>Live music tracking bwhahaha</p>
-      <div id="realtime-clock" class="live-time">Loading time...</div>
+      <h1>Aarav is Vibing to &lt;3</h1>
+      <div class="subtitle">
+        <span>Live music tracking bwhahaha</span>
+        <span>•</span>
+        <span>Local Time: <span id="clock">12:51:17 AM</span> 🕒</span>
+      </div>
     </header>
 
-    <main>
-      <!-- Current Track Card -->
-      <div class="glass-card now-playing">
-        <div class="live-indicator">
-          <span class="pulse-dot"></span>
-          <span id="status-text">Now Playing</span>
+    <!-- Currently / Last Played Card -->
+    <div class="card now-playing-card">
+      <div class="badge">
+        <span class="badge-dot"></span>
+        <span id="statusBadge">LAST PLAYED</span>
+      </div>
+      <div class="track-main">
+        <img id="currentArt" class="album-art-lg" src="" alt="Album Art" style="display: none;" />
+        <div id="currentArtFallback" class="album-art-lg">Album Art</div>
+        <div class="track-info-lg">
+          <h2 id="currentTitle">Ucha Lamba Kad (From "Welcome")</h2>
+          <p id="currentArtist">Anand Raj Anand</p>
         </div>
-        
-        <div class="track-info-container">
-          <img id="album-art" src="https://placehold.co/150x150/111/333?text=Art" alt="Album Art" class="album-art">
-          
-          <div class="track-details">
-            <h2 id="song-title" class="song-title">Loading track...</h2>
-            <p id="artist-name" class="artist-name">Fetching data</p>
+      </div>
+    </div>
+
+    <!-- Recent Vibe History -->
+    <div class="history-section">
+      <h3>Recent Vibe History</h3>
+      <div class="vibe-list" id="vibeHistoryList">
+        <div class="vibe-item">
+          <div class="album-art-sm">Art</div>
+          <div class="track-info-sm">
+            <h4>Loading History...</h4>
+            <p>Fetching online sync</p>
           </div>
         </div>
       </div>
-
-      <!-- Recent Vibe History Section -->
-      <div class="glass-card" style="margin-top: 20px;">
-        <h3 style="font-size: 16px; margin-bottom: 15px; color: #fff;">Recent Vibe History</h3>
-        <div id="history-container" class="history-list">
-          <p style="color: #666; font-size: 14px;">Loading recent history...</p>
-        </div>
-      </div>
-    </main>
+    </div>
   </div>
 
-  <script>
-    const API_KEY = 'b31d67b732b6bb6f66ca8f9c033b97c1'; 
-    const USERNAME = 'a7yr';
-    
-    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=30`;
+  <!-- Firebase & Sync Scripts -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { 
+      getFirestore, 
+      collection, 
+      addDoc, 
+      onSnapshot, 
+      query, 
+      orderBy, 
+      limit, 
+      serverTimestamp 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    let activeTrackKey = "";
+    // Firebase Credentials
+    const firebaseConfig = {
+      apiKey: "AIzaSyD6cTexajg5qthbeK3Z4lBwR-eIgojtI78",
+      authDomain: "a7yrshitvc.firebaseapp.com",
+      databaseURL: "https://a7yrshitvc-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "a7yrshitvc",
+      storageBucket: "a7yrshitvc.firebasestorage.app",
+      messagingSenderId: "383749658516",
+      appId: "1:383749658516:web:5d2fc4b5b88c4191486181",
+      measurementId: "G-HY0BJVR7WV"
+    };
 
-    // Live Clock
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const LASTFM_USERNAME = "aarav"; // Aapka Last.fm username
+    const LASTFM_API_KEY = "b2575223441e921d7b38d3ef7f015c32"; 
+    let lastSavedTrack = "";
+
+    // Clock Functionality
     function updateClock() {
       const now = new Date();
-      let hours = now.getHours();
-      const minutes = now.getMinutes().toString().padStart(2, '0');
-      const seconds = now.getSeconds().toString().padStart(2, '0');
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      hours = hours % 12 || 12;
-      document.getElementById('realtime-clock').innerText = `Local Time: ${hours}:${minutes}:${seconds} ${ampm} 🕒`;
+      document.getElementById('clock').innerText = now.toLocaleTimeString([], {
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+      });
     }
     setInterval(updateClock, 1000);
     updateClock();
 
-    // Multi-Source Album Art Finder
-    async function getBestAlbumArt(artist, song) {
+    // Save Track to Firestore
+    async function saveTrackToDb(title, artist, artUrl) {
       try {
-        const query = encodeURIComponent(`${artist} ${song}`);
-        const res = await fetch(`https://itunes.apple.com/search?term=${query}&entity=song&limit=1`);
-        const data = await res.json();
-        if (data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
-          return data.results[0].artworkUrl100.replace('100x100bb', '400x400bb');
-        }
-      } catch (e) {
-        console.error("iTunes art fetch failed", e);
+        await addDoc(collection(db, "vibe_history"), {
+          title: title,
+          artist: artist,
+          artUrl: artUrl || "",
+          createdAt: serverTimestamp()
+        });
+      } catch (err) {
+        console.error("Firebase save error:", err);
       }
-      return null;
     }
 
-    async function getLiveSongs() {
+    // Fetch Last.fm Realtime Data
+    async function fetchLastFmTrack() {
+      const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${LASTFM_USERNAME}&api_key=${LASTFM_API_KEY}&format=json&limit=1`;
+
       try {
         const response = await fetch(url);
         const data = await response.json();
-        
-        const tracks = data.recenttracks.track;
-        if (!tracks || tracks.length === 0) return;
 
-        // 1. Main Current Track
-        const currentTrack = tracks[0];
-        const trackName = currentTrack.name;
-        const artistName = currentTrack.artist['#text'];
-        const trackUniqueKey = `${trackName}-${artistName}`;
-        const isPlaying = currentTrack['@attr'] && currentTrack['@attr'].nowplaying === 'true';
+        if (data.recenttracks && data.recenttracks.track.length > 0) {
+          const track = data.recenttracks.track[0];
+          const title = track.name;
+          const artist = track.artist['#text'];
+          const artUrl = track.image ? track.image[2]['#text'] : "";
+          const isNowPlaying = track['@attr'] && track['@attr'].nowplaying === "true";
 
-        if (trackUniqueKey !== activeTrackKey) {
-          activeTrackKey = trackUniqueKey;
-          document.getElementById('song-title').innerText = trackName;
-          document.getElementById('artist-name').innerText = artistName;
+          document.getElementById('statusBadge').innerText = isNowPlaying ? "NOW PLAYING" : "LAST PLAYED";
+          document.getElementById('currentTitle').innerText = title;
+          document.getElementById('currentArtist').innerText = artist;
 
-          let artUrl = (currentTrack.image && currentTrack.image[3] && currentTrack.image[3]['#text']) 
-            ? currentTrack.image[3]['#text'] 
-            : '';
+          const imgElem = document.getElementById('currentArt');
+          const fallbackElem = document.getElementById('currentArtFallback');
 
-          if (!artUrl || artUrl.includes('2a96cbd8b46e442fc41c2b86b821562f') || artUrl === '') {
-            artUrl = await getBestAlbumArt(artistName, trackName) || 'https://placehold.co/150x150/111/333?text=No+Art';
-          }
-          
-          document.getElementById('album-art').src = artUrl;
-        }
-
-        const indicatorText = document.getElementById('status-text');
-        if (isPlaying) {
-          indicatorText.innerText = "Now Playing";
-          document.querySelector('.pulse-dot').style.backgroundColor = "#ff2a5f";
-        } else {
-          indicatorText.innerText = "Last Played";
-          document.querySelector('.pulse-dot').style.backgroundColor = "#555";
-        }
-
-        // 2. Recent Vibe History (Dynamic & Clean Sync Fix)
-        const historyContainer = document.getElementById('history-container');
-        let historyHTML = "";
-        let historyCount = 0;
-        let seenTracks = new Set();
-        
-        // Always skip the current track on the main card
-        seenTracks.add(`${trackName.toLowerCase()}-${artistName.toLowerCase()}`);
-
-        for (let i = 1; i < tracks.length; i++) {
-          const t = tracks[i];
-          if (!t.name || !t.artist) continue;
-
-          const tName = t.name;
-          const tArtist = t.artist['#text'];
-          const tKey = `${tName.toLowerCase()}-${tArtist.toLowerCase()}`;
-
-          if (seenTracks.has(tKey)) continue;
-          seenTracks.add(tKey);
-
-          if (historyCount >= 10) break;
-
-          let tArt = (t.image && t.image[1] && t.image[1]['#text']) ? t.image[1]['#text'] : '';
-          if (!tArt || tArt.includes('2a96cbd8b46e442fc41c2b86b821562f') || tArt === '') {
-            // We use a placeholder instantly so history doesn't lag, and fetch async or use fallback
-            tArt = 'https://placehold.co/45x45/111/333?text=Art';
+          if (artUrl) {
+            imgElem.src = artUrl;
+            imgElem.style.display = "block";
+            fallbackElem.style.display = "none";
+          } else {
+            imgElem.style.display = "none";
+            fallbackElem.style.display = "flex";
           }
 
-          historyHTML += `
-            <div class="history-item">
-              <img src="${tArt}" alt="Art" onerror="this.src='https://placehold.co/45x45/111/333?text=Art'">
-              <div class="history-info">
-                <h4>${tName}</h4>
-                <p>${tArtist}</p>
-              </div>
-            </div>
-          `;
-          historyCount++;
+          const trackKey = `${artist} - ${title}`;
+          if (trackKey !== lastSavedTrack) {
+            lastSavedTrack = trackKey;
+            await saveTrackToDb(title, artist, artUrl);
+          }
         }
-
-        historyContainer.innerHTML = historyHTML || `<p style="color: #666; font-size: 14px;">No recent history available...</p>`;
-
-      } catch (error) {
-        console.error("Error fetching music data:", error);
+      } catch (err) {
+        console.warn("Last.fm fetch error:", err);
       }
     }
 
-    getLiveSongs();
-    setInterval(getLiveSongs, 5000); // 5 seconds interval for ultra-fast history update
+    // Realtime Sync Listener for Recent Vibe History
+    function listenToVibeHistory() {
+      const q = query(collection(db, "vibe_history"), orderBy("createdAt", "desc"), limit(15));
+
+      onSnapshot(q, (snapshot) => {
+        const container = document.getElementById("vibeHistoryList");
+        if (!container) return;
+
+        if (snapshot.empty) {
+          container.innerHTML = "<p style='color:#666; font-size:0.9rem;'>No vibe history found.</p>";
+          return;
+        }
+
+        container.innerHTML = snapshot.docs.map(doc => {
+          const data = doc.data();
+          const artHtml = data.artUrl 
+            ? `<img class="album-art-sm" src="${escapeHTML(data.artUrl)}" alt="Art" />` 
+            : `<div class="album-art-sm">Art</div>`;
+
+          return `
+            <div class="vibe-item">
+              ${artHtml}
+              <div class="track-info-sm">
+                <h4>${escapeHTML(data.title || "Unknown Title")}</h4>
+                <p>${escapeHTML(data.artist || "Unknown Artist")}</p>
+              </div>
+            </div>
+          `;
+        }).join("");
+      });
+    }
+
+    function escapeHTML(str) {
+      return (str || "").replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+
+    // Initialize
+    listenToVibeHistory();
+    fetchLastFmTrack();
+    setInterval(fetchLastFmTrack, 12000); // Check every 12 seconds
   </script>
 </body>
 </html>
