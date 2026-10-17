@@ -158,7 +158,7 @@
       <div class="subtitle">
         <span>Live music tracking bwhahaha</span>
         <span>•</span>
-        <span>Local Time: <span id="clock">--:--:--</span> 🕒</span>
+        <span>Local Time: <span id="clock">12:00:00 AM</span> 🕒</span>
       </div>
     </header>
 
@@ -168,7 +168,7 @@
         <span id="statusBadge">NOW PLAYING</span>
       </div>
       <div class="track-main">
-        <img id="currentArt" class="album-art-lg" src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=150&auto=format&fit=crop&q=60" alt="Album Art" />
+        <img id="currentArt" class="album-art-lg" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'><rect width='90' height='90' fill='%231a1a1e'/></svg>" alt="Album Art" />
         <div class="track-info-lg">
           <h2 id="currentTitle">Loading track...</h2>
           <p id="currentArtist">Please wait</p>
@@ -182,16 +182,43 @@
         <div class="vibe-item">
           <div class="track-info-sm">
             <h4>Loading Activity...</h4>
-            <p>Syncing live history...</p>
+            <p>Fetching saved history...</p>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { 
+      getFirestore, 
+      collection, 
+      addDoc, 
+      onSnapshot, 
+      query, 
+      orderBy, 
+      limit, 
+      serverTimestamp 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD6cTexajg5qthbeK3Z4lBwR-eIgojtI78",
+      authDomain: "a7yrshitvc.firebaseapp.com",
+      databaseURL: "https://a7yrshitvc-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "a7yrshitvc",
+      storageBucket: "a7yrshitvc.firebasestorage.app",
+      messagingSenderId: "383749658516",
+      appId: "1:383749658516:web:5d2fc4b5b88c4191486181",
+      measurementId: "G-HY0BJVR7WV"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
     const LASTFM_USERNAME = "a7yr";
     const LASTFM_API_KEY = "b31d67b732b6bb6f66ca8f9c033b97c1";
+    let currentSavedTrackKey = "";
 
     function updateClock() {
       const now = new Date();
@@ -202,90 +229,116 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // CORS-bypass enabled cover search
-    async function resolveCoverArt(title, artist, defaultArt) {
-      // 1. If Last.fm already provides a valid non-star cover
-      if (defaultArt && defaultArt.trim() !== "" && !defaultArt.includes("2a9b3a5c119d2a7156f7c70c778c3194")) {
-        return defaultArt;
-      }
-
-      const cleanTitle = title.replace(/\(from ".*?"\)/gi, '').replace(/\[.*?\]|\(.*?\)/g, '').trim();
+    function cleanSearchQuery(title, artist) {
+      const cleanTitle = title.replace(/\(from ".*?"\)/gi, '')
+                             .replace(/\[.*?\]|\(.*?\)/g, '')
+                             .replace(/- single|- remix/gi, '')
+                             .trim();
       const cleanArtist = artist.split(/&|,|feat\.|ft\./i)[0].trim();
-      const query = encodeURIComponent(`${cleanTitle} ${cleanArtist}`);
-
-      // 2. iTunes JSONP / Corsproxy Mirror (Works 100% for Bollywood, Regional & Pop)
-      try {
-        const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://itunes.apple.com/search?term=' + query + '&entity=song&limit=1')}`);
-        const data = await res.json();
-        const parsed = JSON.parse(data.contents);
-        if (parsed.results && parsed.results.length > 0 && parsed.results[0].artworkUrl100) {
-          return parsed.results[0].artworkUrl100.replace('100x100bb', '300x300bb');
-        }
-      } catch (e) {}
-
-      // 3. Fallback iTunes Direct Search
-      try {
-        const res = await fetch(`https://itunes.apple.com/search?term=${query}&entity=song&limit=1`);
-        const parsed = await res.json();
-        if (parsed.results && parsed.results.length > 0 && parsed.results[0].artworkUrl100) {
-          return parsed.results[0].artworkUrl100.replace('100x100bb', '300x300bb');
-        }
-      } catch (e) {}
-
-      // High Quality Dark Fallback Cover (No Star)
-      return "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=150&auto=format&fit=crop&q=60";
+      return encodeURIComponent(`${cleanTitle} ${cleanArtist}`);
     }
 
-    async function syncMusicHistory() {
-      const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${LASTFM_USERNAME}&api_key=${LASTFM_API_KEY}&format=json&limit=10`;
+    async function getHighResCoverArt(title, artist, rawArt) {
+      if (rawArt && rawArt.trim() !== "" && !rawArt.includes("2a9b3a5c119d2a7156f7c70c778c3194")) {
+        return rawArt;
+      }
+
+      const queryStr = cleanSearchQuery(title, artist);
+
+      // JioSaavn HD API (Best for Bollywood/Punjabi & Regional Covers)
+      try {
+        const res = await fetch(`https://saavn.dev/api/search/songs?query=${queryStr}&limit=1`);
+        const data = await res.json();
+        if (data.data && data.data.results && data.data.results.length > 0) {
+          const imgs = data.data.results[0].image;
+          if (imgs && imgs.length > 0) return imgs[imgs.length - 1].url;
+        }
+      } catch (e) {}
+
+      // iTunes Fallback API
+      try {
+        const res = await fetch(`https://itunes.apple.com/search?term=${queryStr}&entity=song&limit=1`);
+        const data = await res.json();
+        if (data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
+          return data.results[0].artworkUrl100.replace('100x100bb', '300x300bb');
+        }
+      } catch (e) {}
+
+      return "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'><rect width='90' height='90' fill='%231a1a1e'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23888' font-size='14'>Art</text></svg>";
+    }
+
+    async function saveTrackToDatabase(title, artist, artUrl) {
+      try {
+        await addDoc(collection(db, "vibe_history"), {
+          title: title,
+          artist: artist,
+          artUrl: artUrl,
+          createdAt: serverTimestamp()
+        });
+      } catch (err) {
+        console.error("Firebase write error:", err);
+      }
+    }
+
+    async function checkLiveLastFmTrack() {
+      const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${LASTFM_USERNAME}&api_key=${LASTFM_API_KEY}&format=json&limit=1`;
 
       try {
-        const response = await fetch(url);
-        const data = await response.json();
+        const res = await fetch(url);
+        const data = await res.json();
 
         if (data.recenttracks && data.recenttracks.track.length > 0) {
-          const tracks = data.recenttracks.track;
-          const currentTrack = tracks[0];
-
-          const isNowPlaying = currentTrack['@attr'] && currentTrack['@attr'].nowplaying === "true";
-          const title = currentTrack.name;
-          const artist = currentTrack.artist['#text'];
-          const rawArt = currentTrack.image ? currentTrack.image[currentTrack.image.length - 1]['#text'] : "";
+          const current = data.recenttracks.track[0];
+          const title = current.name;
+          const artist = current.artist['#text'];
+          const rawArt = current.image ? current.image[current.image.length - 1]['#text'] : "";
+          const isNowPlaying = current['@attr'] && current['@attr'].nowplaying === "true";
 
           document.getElementById('statusBadge').innerText = isNowPlaying ? "NOW PLAYING" : "LAST PLAYED";
           document.getElementById('currentTitle').innerText = title;
           document.getElementById('currentArtist').innerText = artist;
 
-          // Set Now Playing Art
-          const nowPlayingCover = await resolveCoverArt(title, artist, rawArt);
-          document.getElementById('currentArt').src = nowPlayingCover;
+          const coverUrl = await getHighResCoverArt(title, artist, rawArt);
+          document.getElementById('currentArt').src = coverUrl;
 
-          // Render live last 10 tracks
-          const historyContainer = document.getElementById('vibeHistoryList');
-          
-          const historyHtml = await Promise.all(tracks.slice(0, 10).map(async (track) => {
-            const tTitle = track.name;
-            const tArtist = track.artist['#text'];
-            const tRawArt = track.image ? track.image[track.image.length - 1]['#text'] : "";
-
-            const coverUrl = await resolveCoverArt(tTitle, tArtist, tRawArt);
-
-            return `
-              <div class="vibe-item">
-                <img class="album-art-sm" src="${escapeHTML(coverUrl)}" alt="Art" />
-                <div class="track-info-sm">
-                  <h4>${escapeHTML(tTitle)}</h4>
-                  <p>${escapeHTML(tArtist)}</p>
-                </div>
-              </div>
-            `;
-          }));
-
-          historyContainer.innerHTML = historyHtml.join('');
+          const trackKey = `${artist} - ${title}`;
+          if (trackKey !== currentSavedTrackKey) {
+            currentSavedTrackKey = trackKey;
+            await saveTrackToDatabase(title, artist, coverUrl);
+          }
         }
       } catch (err) {
-        console.warn("Sync error:", err);
+        console.warn("Last.fm sync error:", err);
       }
+    }
+
+    function listenToVibeHistoryDatabase() {
+      const q = query(collection(db, "vibe_history"), orderBy("createdAt", "desc"), limit(10));
+
+      onSnapshot(q, (snapshot) => {
+        const container = document.getElementById('vibeHistoryList');
+        if (!container) return;
+
+        if (snapshot.empty) {
+          container.innerHTML = "<p style='color:#666; font-size:0.9rem;'>No vibe history saved yet.</p>";
+          return;
+        }
+
+        container.innerHTML = snapshot.docs.map(doc => {
+          const data = doc.data();
+          const artUrl = data.artUrl || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'><rect width='48' height='48' fill='%231a1a1e'/></svg>";
+
+          return `
+            <div class="vibe-item">
+              <img class="album-art-sm" src="${escapeHTML(artUrl)}" alt="Art" />
+              <div class="track-info-sm">
+                <h4>${escapeHTML(data.title || "Unknown Title")}</h4>
+                <p>${escapeHTML(data.artist || "Unknown Artist")}</p>
+              </div>
+            </div>
+          `;
+        }).join('');
+      });
     }
 
     function escapeHTML(str) {
@@ -294,8 +347,9 @@
       );
     }
 
-    syncMusicHistory();
-    setInterval(syncMusicHistory, 5000); // 5s smooth polling
+    listenToVibeHistoryDatabase();
+    checkLiveLastFmTrack();
+    setInterval(checkLiveLastFmTrack, 8000);
   </script>
 </body>
 </html>
