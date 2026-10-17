@@ -27,7 +27,6 @@
       min-height: 100vh;
       position: relative;
       overflow-x: hidden;
-      transition: background-color 1s ease;
       -webkit-font-smoothing: antialiased;
     }
 
@@ -41,7 +40,6 @@
       background: radial-gradient(circle, var(--accent-glow) 0%, rgba(5, 5, 5, 0) 70%);
       z-index: 0;
       pointer-events: none;
-      transition: background 1.2s ease-in-out;
       filter: blur(70px);
     }
 
@@ -68,7 +66,6 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       filter: drop-shadow(0 2px 10px rgba(0,0,0,0.5));
-      transition: background 0.8s ease;
     }
 
     .subtitle {
@@ -87,11 +84,6 @@
       font-size: 0.85rem;
       font-weight: 600;
       letter-spacing: 0.2px;
-      transition: opacity 0.2s, color 0.8s ease;
-    }
-
-    .nav-link:hover {
-      opacity: 0.8;
     }
 
     .status-card {
@@ -129,11 +121,6 @@
       cursor: pointer;
       text-decoration: underline;
       white-space: nowrap;
-      transition: color 0.2s;
-    }
-
-    .edit-toggle-btn:hover {
-      color: #a0a0ab;
     }
 
     .status-input-group {
@@ -157,10 +144,6 @@
       outline: none;
     }
 
-    .status-input-group input:focus {
-      border-color: var(--accent-color);
-    }
-
     .status-input-group button {
       background: var(--accent-color);
       color: #000;
@@ -170,11 +153,6 @@
       font-size: 0.85rem;
       font-weight: 700;
       cursor: pointer;
-      transition: opacity 0.2s, background-color 0.8s ease;
-    }
-
-    .status-input-group button:hover {
-      opacity: 0.9;
     }
 
     .card {
@@ -182,7 +160,6 @@
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 18px;
       padding: 20px;
-      transition: border-color 0.8s ease, box-shadow 0.8s ease;
     }
 
     .now-playing-card {
@@ -210,7 +187,6 @@
       background-color: var(--accent-color);
       border-radius: 50%;
       box-shadow: 0 0 8px var(--accent-color);
-      transition: background-color 0.8s ease, box-shadow 0.8s ease;
     }
 
     .track-main {
@@ -265,13 +241,6 @@
       display: flex;
       align-items: center;
       gap: 14px;
-      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
-    }
-
-    .vibe-item:hover {
-      transform: translateY(-2px);
-      border-color: rgba(255, 255, 255, 0.15);
-      background: #121216;
     }
 
     .album-art-sm {
@@ -281,7 +250,6 @@
       background: #15151a;
       object-fit: cover;
       flex-shrink: 0;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
     }
 
     .track-info-sm h4 {
@@ -300,7 +268,7 @@
 </head>
 <body>
 
-  <div class="ambient-glow" id="ambientGlow"></div>
+  <div class="ambient-glow"></div>
 
   <div class="wrapper">
     <header>
@@ -330,9 +298,9 @@
       </div>
     </div>
 
-    <div class="card now-playing-card" id="nowPlayingCard">
+    <div class="card now-playing-card">
       <div class="badge">
-        <span class="badge-dot" id="badgeDot"></span>
+        <span class="badge-dot"></span>
         <span id="statusBadge">NOW PLAYING</span>
       </div>
       <div class="track-main">
@@ -361,3 +329,109 @@
     const LASTFM_USERNAME = "a7yr";
     const LASTFM_API_KEY = "b31d67b732b6bb6f66ca8f9c033b97c1";
     const ADMIN_PASSCODE = "aarav123";
+    const RTDB_MOOD_URL = "https://a7yrshitvc-default-rtdb.asia-southeast1.firebasedatabase.app/current_mood.json";
+    const CLEAN_FALLBACK_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='92' height='92' viewBox='0 0 92 92'><rect width='92' height='92' fill='%2315151a'/><circle cx='46' cy='46' r='18' fill='none' stroke='%23333' stroke-width='4'/></svg>";
+
+    function updateClock() {
+      try {
+        const now = new Date();
+        document.getElementById('clock').innerText = now.toLocaleTimeString([], {
+          hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+        });
+      } catch(e){}
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    const toggleEditBtn = document.getElementById("toggleEditBtn");
+    const statusInputGroup = document.getElementById("statusInputGroup");
+    const statusElem = document.getElementById("liveStatusText");
+
+    toggleEditBtn.addEventListener("click", () => {
+      if (statusInputGroup.classList.contains("active")) {
+        statusInputGroup.classList.remove("active");
+        toggleEditBtn.innerText = "Edit Mood 🔒";
+      } else {
+        const pass = prompt("Enter Admin Secret Key to edit mood:");
+        if (pass === ADMIN_PASSCODE) {
+          statusInputGroup.classList.add("active");
+          toggleEditBtn.innerText = "Close ✖";
+        } else if (pass !== null) {
+          alert("Incorrect Passcode!");
+        }
+      }
+    });
+
+    async function fetchUniversalMood() {
+      try {
+        const res = await fetch(RTDB_MOOD_URL);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.text) statusElem.innerText = data.text;
+        }
+      } catch (e) {}
+    }
+
+    async function updateCustomStatus(statusText) {
+      if (!statusText || !statusText.trim()) return;
+      try {
+        await fetch(RTDB_MOOD_URL, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: statusText.trim(), updatedAt: new Date().toISOString() })
+        });
+        statusElem.innerText = statusText.trim();
+        document.getElementById("statusInput").value = "";
+        statusInputGroup.classList.remove("active");
+        toggleEditBtn.innerText = "Edit Mood 🔒";
+      } catch (e) {}
+    }
+
+    document.getElementById("updateStatusBtn").addEventListener("click", () => {
+      updateCustomStatus(document.getElementById("statusInput").value);
+    });
+
+    async function getCoverArt(title, artist, rawArt) {
+      if (rawArt && !rawArt.includes("2a9b3a5c119d2a7156f7c70c778c3194") && !rawArt.includes("star")) {
+        return rawArt;
+      }
+      try {
+        const cleanT = (title || "").replace(/\(.*?\)|\[.*?\]/g, "").trim();
+        const cleanA = (artist || "").split(/&|,/)[0].trim();
+        const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(cleanT + " " + cleanA)}&entity=song&limit=1`);
+        const data = await res.json();
+        if (data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
+          return data.results[0].artworkUrl100.replace("100x100bb", "600x600bb");
+        }
+      } catch (e) {}
+      return CLEAN_FALLBACK_SVG;
+    }
+
+    async function checkLiveLastFmTrack() {
+      try {
+        const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${LASTFM_USERNAME}&api_key=${LASTFM_API_KEY}&format=json&limit=6&_=${Date.now()}`;
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        if (data.recenttracks && data.recenttracks.track && data.recenttracks.track.length > 0) {
+          const tracks = data.recenttracks.track;
+          const current = tracks[0];
+          const title = current.name || "Unknown";
+          const artist = current.artist ? current.artist['#text'] : "Unknown";
+          const rawArt = current.image ? current.image[current.image.length - 1]['#text'] : "";
+          const isNowPlaying = current['@attr'] && current['@attr'].nowplaying === "true";
+
+          document.getElementById('statusBadge').innerText = isNowPlaying ? "NOW PLAYING" : "LAST PLAYED";
+          document.getElementById('currentTitle').innerText = title;
+          document.getElementById('currentArtist').innerText = artist;
+
+          getCoverArt(title, artist, rawArt).then(art => {
+            const el = document.getElementById('currentArt');
+            if(el) el.src = art;
+          });
+
+          // History Render
+          const historyContainer = document.getElementById('vibeHistoryList');
+          if (historyContainer) {
+            const hTracks =
