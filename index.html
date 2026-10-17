@@ -440,27 +440,34 @@
       }
     });
 
-    function cleanSearchQuery(title, artist) {
-      const cleanTitle = title.replace(/\(from ".*?"\)/gi, '')
-                             .replace(/\[.*?\]|\(.*?\)/g, '')
-                             .replace(/- single|- remix/gi, '')
-                             .trim();
-      const cleanArtist = artist.split(/&|,|feat\.|ft\./i)[0].trim();
-      return encodeURIComponent(`${cleanTitle} ${cleanArtist}`);
+    // Smart Query Cleaner for Indian / Multi-Artist Track Titles
+    function getCleanQuery(title, artist) {
+      const cleanTitle = (title || "")
+        .replace(/\(from ".*?"\)/gi, '')
+        .replace(/\[.*?\]|\(.*?\)/g, '')
+        .replace(/- single|- remix|- original/gi, '')
+        .trim();
+      
+      // Extract primary artist name (e.g., "Atif Aslam" from "Atif Aslam, Alisha Chinai & Pritam")
+      const primaryArtist = (artist || "").split(/&|,|feat\.|ft\./i)[0].trim();
+      
+      return {
+        fullQuery: encodeURIComponent(`${cleanTitle} ${primaryArtist}`),
+        titleOnly: encodeURIComponent(cleanTitle)
+      };
     }
 
-    // MULTI-PROVIDER ULTIMATE SCRAPER
+    // MULTI-PROVIDER HIGH-RES SCRAPER PIPELINE
     async function getUniversalHighResCoverArt(title, artist, rawLastFmArt) {
-      // 0. Check if Last.fm gave a valid art (Ignore 2a9b3a5c star placeholder)
       if (rawLastFmArt && rawLastFmArt.trim() !== "" && !rawLastFmArt.includes("2a9b3a5c119d2a7156f7c70c778c3194")) {
         return rawLastFmArt;
       }
 
-      const qStr = cleanSearchQuery(title, artist);
+      const { fullQuery, titleOnly } = getCleanQuery(title, artist);
 
-      // 1. JioSaavn Scraper (Best for Indian/Regional/Bollywood tracks like Laado)
+      // 1. JioSaavn Dev API (Primary for Bollywood / Regional tracks)
       try {
-        const res = await fetch(`https://saavn.dev/api/search/songs?query=${qStr}&limit=1`);
+        const res = await fetch(`https://saavn.dev/api/search/songs?query=${fullQuery}&limit=1`);
         const data = await res.json();
         if (data.data && data.data.results && data.data.results.length > 0) {
           const imgs = data.data.results[0].image;
@@ -468,29 +475,31 @@
         }
       } catch (e) {}
 
-      // 2. Deezer API Scraper
+      // 2. Apple iTunes API (Cleaned Primary Artist Query)
       try {
-        const res = await fetch(`https://api.deezer.com/search?q=${qStr}&limit=1`);
+        const res = await fetch(`https://itunes.apple.com/search?term=${fullQuery}&entity=song&limit=1`);
+        const data = await res.json();
+        if (data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
+          return data.results[0].artworkUrl100.replace('100x100bb', '500x500bb');
+        }
+      } catch (e) {}
+
+      // 3. iTunes Title-Only Fallback
+      try {
+        const res = await fetch(`https://itunes.apple.com/search?term=${titleOnly}&entity=song&limit=1`);
+        const data = await res.json();
+        if (data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
+          return data.results[0].artworkUrl100.replace('100x100bb', '500x500bb');
+        }
+      } catch (e) {}
+
+      // 4. Deezer Search API
+      try {
+        const res = await fetch(`https://api.deezer.com/search?q=${fullQuery}&limit=1`);
         const data = await res.json();
         if (data.data && data.data.length > 0 && data.data[0].album.cover_big) {
           return data.data[0].album.cover_big;
         }
-      } catch (e) {}
-
-      // 3. Apple iTunes API Scraper
-      try {
-        const res = await fetch(`https://itunes.apple.com/search?term=${qStr}&entity=song&limit=1`);
-        const data = await res.json();
-        if (data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
-          return data.results[0].artworkUrl100.replace('100x100bb', '400x400bb');
-        }
-      } catch (e) {}
-
-      // 4. DuckDuckGo Fast Image Scraper (Catches cover from Google Images / YT Music)
-      try {
-        const ddgRes = await fetch(`https://api.duckduckgo.com/?q=${qStr}+song+cover+art&format=json`);
-        const ddgData = await ddgRes.json();
-        if (ddgData.Image) return ddgData.Image;
       } catch (e) {}
 
       return CLEAN_FALLBACK_SVG;
@@ -516,12 +525,11 @@
           document.getElementById('currentTitle').innerText = title;
           document.getElementById('currentArtist').innerText = artist;
 
-          // Fetch High-Res Cover with Multi-Service Fallbacks
           getUniversalHighResCoverArt(title, artist, rawArt).then(coverUrl => {
             document.getElementById('currentArt').src = coverUrl;
           });
 
-          // Render History with Scraped Cover Arts
+          // Render Recent Activity History
           const historyContainer = document.getElementById('vibeHistoryList');
           if (historyContainer && tracks.length > 1) {
             const historyTracks = tracks.slice(1, 6);
@@ -529,7 +537,6 @@
             historyContainer.innerHTML = historyTracks.map((track, idx) => {
               const tTitle = track.name || "Unknown Track";
               const tArtist = track.artist ? track.artist['#text'] : "Unknown Artist";
-              const tRawArt = (track.image && track.image[track.image.length - 1]['#text']) ? track.image[track.image.length - 1]['#text'] : "";
 
               return `
                 <div class="vibe-item" id="hist-item-${idx}">
@@ -542,7 +549,6 @@
               `;
             }).join('');
 
-            // Asynchronously resolve history cover arts using Scraper
             historyTracks.forEach((track, idx) => {
               const tTitle = track.name || "";
               const tArtist = track.artist ? track.artist['#text'] : "";
