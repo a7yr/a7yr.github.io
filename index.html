@@ -31,7 +31,6 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* Ambient Dynamic Background Glow */
     .ambient-glow {
       position: fixed;
       top: -20%;
@@ -95,7 +94,6 @@
       opacity: 0.8;
     }
 
-    /* Protected Vibe Card */
     .status-card {
       background: #0d0d10;
       border: 1px solid rgba(255, 255, 255, 0.08);
@@ -317,7 +315,6 @@
       </div>
     </header>
 
-    <!-- Protected Status Display -->
     <div class="status-card">
       <div class="status-display">
         <div>
@@ -333,7 +330,6 @@
       </div>
     </div>
 
-    <!-- Main Now Playing Card -->
     <div class="card now-playing-card" id="nowPlayingCard">
       <div class="badge">
         <span class="badge-dot" id="badgeDot"></span>
@@ -348,7 +344,6 @@
       </div>
     </div>
 
-    <!-- Recent Vibe History Section -->
     <div class="history-section">
       <h3>Recent Activities ^_^</h3>
       <div class="vibe-list" id="vibeHistoryList">
@@ -440,34 +435,48 @@
       }
     });
 
-    // Smart Query Cleaner for Indian / Multi-Artist Track Titles
-    function getCleanQuery(title, artist) {
-      const cleanTitle = (title || "")
-        .replace(/\(from ".*?"\)/gi, '')
-        .replace(/\[.*?\]|\(.*?\)/g, '')
-        .replace(/- single|- remix|- original/gi, '')
-        .trim();
-      
-      // Extract primary artist name (e.g., "Atif Aslam" from "Atif Aslam, Alisha Chinai & Pritam")
-      const primaryArtist = (artist || "").split(/&|,|feat\.|ft\./i)[0].trim();
-      
-      return {
-        fullQuery: encodeURIComponent(`${cleanTitle} ${primaryArtist}`),
-        titleOnly: encodeURIComponent(cleanTitle)
-      };
+    // ITUNES ARTWORK FINDER REPO MERGED LOGIC + MULTI-ENGINE
+    async function fetchAppleiTunesArt(queryStr) {
+      try {
+        // Method 1: Song Entity Search
+        let res = await fetch(`https://itunes.apple.com/search?term=${queryStr}&entity=song&limit=1`);
+        let data = await res.json();
+        
+        if (!data.results || data.results.length === 0) {
+          // Method 2: Album Entity Search (Inspired by repo script.js)
+          res = await fetch(`https://itunes.apple.com/search?term=${queryStr}&entity=album&limit=1`);
+          data = await res.json();
+        }
+
+        if (data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
+          // Replace 100x100 with Ultra High-Res 2000x2000 as per repo logic
+          return data.results[0].artworkUrl100.replace("100x100bb.jpg", "2000x2000bb.jpg").replace("100x100bb", "2000x2000bb");
+        }
+      } catch (e) {}
+      return null;
     }
 
-    // MULTI-PROVIDER HIGH-RES SCRAPER PIPELINE
     async function getUniversalHighResCoverArt(title, artist, rawLastFmArt) {
       if (rawLastFmArt && rawLastFmArt.trim() !== "" && !rawLastFmArt.includes("2a9b3a5c119d2a7156f7c70c778c3194")) {
         return rawLastFmArt;
       }
 
-      const { fullQuery, titleOnly } = getCleanQuery(title, artist);
+      const cleanTitle = (title || "").replace(/\(from ".*?"\)/gi, '').replace(/\[.*?\]|\(.*?\)/g, '').replace(/- single|- remix|- original/gi, '').trim();
+      const primaryArtist = (artist || "").split(/&|,|feat\.|ft\./i)[0].trim();
 
-      // 1. JioSaavn Dev API (Primary for Bollywood / Regional tracks)
+      const queryFull = encodeURIComponent(`${cleanTitle} ${primaryArtist}`);
+      const queryTitle = encodeURIComponent(cleanTitle);
+
+      // 1. Try iTunes High-Res 2000px Finder
+      let iTunesArt = await fetchAppleiTunesArt(queryFull);
+      if (iTunesArt) return iTunesArt;
+
+      iTunesArt = await fetchAppleiTunesArt(queryTitle);
+      if (iTunesArt) return iTunesArt;
+
+      // 2. JioSaavn Dev Scraper (Fallback for Bollywood/Haryanvi/Hindi)
       try {
-        const res = await fetch(`https://saavn.dev/api/search/songs?query=${fullQuery}&limit=1`);
+        const res = await fetch(`https://saavn.dev/api/search/songs?query=${queryFull}&limit=1`);
         const data = await res.json();
         if (data.data && data.data.results && data.data.results.length > 0) {
           const imgs = data.data.results[0].image;
@@ -475,30 +484,12 @@
         }
       } catch (e) {}
 
-      // 2. Apple iTunes API (Cleaned Primary Artist Query)
+      // 3. Deezer API Scraper
       try {
-        const res = await fetch(`https://itunes.apple.com/search?term=${fullQuery}&entity=song&limit=1`);
+        const res = await fetch(`https://api.deezer.com/search?q=${queryFull}&limit=1`);
         const data = await res.json();
-        if (data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
-          return data.results[0].artworkUrl100.replace('100x100bb', '500x500bb');
-        }
-      } catch (e) {}
-
-      // 3. iTunes Title-Only Fallback
-      try {
-        const res = await fetch(`https://itunes.apple.com/search?term=${titleOnly}&entity=song&limit=1`);
-        const data = await res.json();
-        if (data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
-          return data.results[0].artworkUrl100.replace('100x100bb', '500x500bb');
-        }
-      } catch (e) {}
-
-      // 4. Deezer Search API
-      try {
-        const res = await fetch(`https://api.deezer.com/search?q=${fullQuery}&limit=1`);
-        const data = await res.json();
-        if (data.data && data.data.length > 0 && data.data[0].album.cover_big) {
-          return data.data[0].album.cover_big;
+        if (data.data && data.data.length > 0 && data.data[0].album && data.data[0].album.cover_xl) {
+          return data.data[0].album.cover_xl;
         }
       } catch (e) {}
 
@@ -526,10 +517,12 @@
           document.getElementById('currentArtist').innerText = artist;
 
           getUniversalHighResCoverArt(title, artist, rawArt).then(coverUrl => {
-            document.getElementById('currentArt').src = coverUrl;
+            const imgEl = document.getElementById('currentArt');
+            imgEl.src = coverUrl;
+            imgEl.onerror = () => { imgEl.src = CLEAN_FALLBACK_SVG; };
           });
 
-          // Render Recent Activity History
+          // Render History
           const historyContainer = document.getElementById('vibeHistoryList');
           if (historyContainer && tracks.length > 1) {
             const historyTracks = tracks.slice(1, 6);
@@ -556,7 +549,10 @@
               
               getUniversalHighResCoverArt(tTitle, tArtist, tRawArt).then(artUrl => {
                 const imgElem = document.getElementById(`hist-img-${idx}`);
-                if (imgElem) imgElem.src = artUrl;
+                if (imgElem) {
+                  imgElem.src = artUrl;
+                  imgElem.onerror = () => { imgElem.src = CLEAN_FALLBACK_SVG; };
+                }
               });
             });
           }
