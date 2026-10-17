@@ -229,13 +229,12 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // Clean title for better search matching
     function cleanSearchQuery(title, artist) {
       const cleanedTitle = title.replace(/\(From ".*?"\)/gi, '').replace(/\[.*?\]|\(.*?\)/g, '').trim();
       return { cleanedTitle, query: encodeURIComponent(`${cleanedTitle} ${artist}`) };
     }
 
-    // MULTI-SOURCE ALBUM ART SCRAPER / FETCH CHAIN
+    // MULTI-SOURCE SCRAPER (LAST.FM -> ITUNES -> DEEZER -> YT MUSIC -> MUSICBRAINZ)
     async function fetchBestAlbumArt(title, artist, defaultArt = "") {
       if (defaultArt && !defaultArt.includes("2a9b3a5c119d2a7156f7c70c778c3194") && !defaultArt.includes("placeholder")) {
         return defaultArt;
@@ -243,7 +242,7 @@
 
       const { cleanedTitle, query } = cleanSearchQuery(title, artist);
 
-      // 1. Source: iTunes Search API
+      // 1. iTunes API
       try {
         const res = await fetch(`https://itunes.apple.com/search?term=${query}&entity=song&limit=1`);
         const data = await res.json();
@@ -252,7 +251,7 @@
         }
       } catch (e) { console.warn("iTunes fetch failed"); }
 
-      // 2. Source: Deezer API
+      // 2. Deezer API
       try {
         const res = await fetch(`https://api.deezer.com/search?q=${query}&limit=1`);
         const data = await res.json();
@@ -261,7 +260,17 @@
         }
       } catch (e) { console.warn("Deezer fetch failed"); }
 
-      // 3. Source: MusicBrainz API
+      // 3. YouTube Music / Invidious API Scraper Fallback
+      try {
+        const res = await fetch(`https://inv.tux.pizza/api/v1/search?q=${query}&type=video`);
+        const data = await res.json();
+        if (data && data.length > 0 && data[0].videoThumbnails) {
+          const highResThumb = data[0].videoThumbnails.find(t => t.quality === 'high' || t.quality === 'medium');
+          if (highResThumb) return highResThumb.url;
+        }
+      } catch (e) { console.warn("YT Music fetch failed"); }
+
+      // 4. MusicBrainz API
       try {
         const res = await fetch(`https://musicbrainz.org/ws/2/recording/?query=recording:${encodeURIComponent(cleanedTitle)}%20AND%20artist:${encodeURIComponent(artist)}&fmt=json&limit=1`);
         const data = await res.json();
@@ -350,7 +359,7 @@
 
     function escapeHTML(str) {
       return (str || "").replace(/[&<>'"]/g, 
-        tag => ({ '&': '&amp;', '<': '&lt;'> '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
       );
     }
 
