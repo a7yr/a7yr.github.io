@@ -364,6 +364,8 @@
     const RTDB_MOOD_URL = "https://a7yrshitvc-default-rtdb.asia-southeast1.firebasedatabase.app/current_mood.json";
     const CLEAN_FALLBACK_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='92' height='92' viewBox='0 0 92 92'><rect width='92' height='92' fill='%2315151a'/><circle cx='46' cy='46' r='18' fill='none' stroke='%23333' stroke-width='4'/></svg>";
 
+    const artCache = new Map();
+
     function updateClock() {
       const now = new Date();
       document.getElementById('clock').innerText = now.toLocaleTimeString([], {
@@ -435,52 +437,80 @@
       }
     });
 
-    // CORS-PROOF SPOTIFY & ITUNES COVER SCRAPER
+    function isInvalidLastFmArt(url) {
+      if (!url || typeof url !== 'string' || !url.trim()) return true;
+      const lower = url.toLowerCase();
+      return lower.includes("2a9b3a5c119d2a7156f7c70c778c3194") || lower.includes("star");
+    }
+
     async function getUniversalHighResCoverArt(title, artist, rawLastFmArt) {
-      if (
-        rawLastFmArt && 
-        rawLastFmArt.trim() !== "" && 
-        !rawLastFmArt.includes("2a9b3a5c119d2a7156f7c70c778c3194") &&
-        !rawLastFmArt.includes("star")
-      ) {
+      const cacheKey = `${title}_${artist}`.toLowerCase();
+      if (artCache.has(cacheKey)) return artCache.get(cacheKey);
+
+      if (!isInvalidLastFmArt(rawLastFmArt)) {
+        artCache.set(cacheKey, rawLastFmArt);
         return rawLastFmArt;
       }
 
       const cleanTitle = (title || "").replace(/\[.*?\]|\(.*?\)/g, '').replace(/from ".*?"/gi, '').replace(/- single|- remix/gi, '').trim();
       const primaryArtist = (artist || "").split(/&|,|feat\.|ft\./i)[0].trim();
-      const queryStr = encodeURIComponent(`${cleanTitle} ${primaryArtist}`);
 
-      // 1. iTunes CORS Proxy
-      try {
-        const res = await fetch(`https://itunes.apple.com/search?term=${queryStr}&entity=song&limit=1`);
-        const data = await res.json();
-        if (data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
-          return data.results[0].artworkUrl100.replace('100x100bb', '600x600bb');
-        }
-      } catch (e) {}
+      const queries = [
+        encodeURIComponent(`${cleanTitle} ${primaryArtist}`),
+        encodeURIComponent(`${cleanTitle}`),
+        encodeURIComponent(`${title} ${artist}`)
+      ];
 
-      // 2. JioSaavn Direct SSL Proxy
-      try {
-        const res = await fetch(`https://saavn.dev/api/search/songs?query=${queryStr}&limit=1`);
-        const data = await res.json();
-        if (data.data && data.data.results && data.data.results.length > 0) {
-          const imgs = data.data.results[0].image;
-          if (imgs && imgs.length > 0) return imgs[imgs.length - 1].url;
-        }
-      } catch (e) {}
+      for (const q of queries) {
+        if (!q) continue;
 
+        try {
+          const res = await fetch(`https://itunes.apple.com/search?term=${q}&entity=song&limit=1`);
+          const data = await res.json();
+          if (data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
+            const highResUrl = data.results[0].artworkUrl100.replace('100x100bb.jpg', '600x600bb.jpg').replace('100x100bb', '600x600bb');
+            artCache.set(cacheKey, highResUrl);
+            return highResUrl;
+          }
+        } catch (e) {}
+
+        try {
+          const res = await fetch(`https://saavn.dev/api/search/songs?query=${q}&limit=1`);
+          const data = await res.json();
+          if (data.data && data.data.results && data.data.results.length > 0) {
+            const imgs = data.data.results[0].image;
+            if (imgs && imgs.length > 0) {
+              const saavnUrl = imgs[imgs.length - 1].url;
+              artCache.set(cacheKey, saavnUrl);
+              return saavnUrl;
+            }
+          }
+        } catch (e) {}
+
+        try {
+          const res = await fetch(`https://api.deezer.com/search?q=${q}&limit=1`);
+          const data = await res.json();
+          if (data.data && data.data.length > 0 && data.data[0].album && data.data[0].album.cover_big) {
+            const deezerUrl = data.data[0].album.cover_big;
+            artCache.set(cacheKey, deezerUrl);
+            return deezerUrl;
+          }
+        } catch (e) {}
+      }
+
+      artCache.set(cacheKey, CLEAN_FALLBACK_SVG);
       return CLEAN_FALLBACK_SVG;
     }
 
     async function checkLiveLastFmTrack() {
-      const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${LASTFM_USERNAME}&api_key=${LASTFM_API_KEY}&format=json&limit=5`;
+      const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${LASTFM_USERNAME}&api_key=${LASTFM_API_KEY}&format=json&limit=10`;
 
       try {
         const res = await fetch(url);
         if (!res.ok) return;
         const data = await res.json();
 
-        if (data.recenttracks && data.recenttracks.track.length > 0) {
+        if (data.recenttracks && data.recenttracks.track && data.recenttracks.track.length > 0) {
           const tracks = data.recenttracks.track;
           const current = tracks[0];
           const title = current.name;
@@ -498,39 +528,41 @@
             imgEl.onerror = () => { imgEl.src = CLEAN_FALLBACK_SVG; };
           });
 
-          // Render History
+          // REAL-TIME DYNAMIC RECENT ACTIVITIES SYNC
           const historyContainer = document.getElementById('vibeHistoryList');
-          if (historyContainer && tracks.length > 1) {
-            const historyTracks = tracks.slice(1, 6);
-            
-            historyContainer.innerHTML = historyTracks.map((track, idx) => {
-              const tTitle = track.name || "Unknown Track";
-              const tArtist = track.artist ? track.artist['#text'] : "Unknown Artist";
+          if (historyContainer) {
+            const historyTracks = isNowPlaying ? tracks.slice(1, 6) : tracks.slice(0, 5);
 
-              return `
-                <div class="vibe-item" id="hist-item-${idx}">
-                  <img class="album-art-sm" id="hist-img-${idx}" src="${CLEAN_FALLBACK_SVG}" alt="Art" />
-                  <div class="track-info-sm">
-                    <h4>${escapeHTML(tTitle)}</h4>
-                    <p>${escapeHTML(tArtist)}</p>
+            if (historyTracks.length > 0) {
+              historyContainer.innerHTML = historyTracks.map((track, idx) => {
+                const tTitle = track.name || "Unknown Track";
+                const tArtist = track.artist ? track.artist['#text'] : "Unknown Artist";
+
+                return `
+                  <div class="vibe-item" id="hist-item-${idx}">
+                    <img class="album-art-sm" id="hist-img-${idx}" src="${CLEAN_FALLBACK_SVG}" alt="Art" />
+                    <div class="track-info-sm">
+                      <h4>${escapeHTML(tTitle)}</h4>
+                      <p>${escapeHTML(tArtist)}</p>
+                    </div>
                   </div>
-                </div>
-              `;
-            }).join('');
+                `;
+              }).join('');
 
-            historyTracks.forEach((track, idx) => {
-              const tTitle = track.name || "";
-              const tArtist = track.artist ? track.artist['#text'] : "";
-              const tRawArt = (track.image && track.image[track.image.length - 1]['#text']) ? track.image[track.image.length - 1]['#text'] : "";
-              
-              getUniversalHighResCoverArt(tTitle, tArtist, tRawArt).then(artUrl => {
-                const imgElem = document.getElementById(`hist-img-${idx}`);
-                if (imgElem) {
-                  imgElem.src = artUrl;
-                  imgElem.onerror = () => { imgElem.src = CLEAN_FALLBACK_SVG; };
-                }
+              historyTracks.forEach((track, idx) => {
+                const tTitle = track.name || "";
+                const tArtist = track.artist ? track.artist['#text'] : "";
+                const tRawArt = (track.image && track.image[track.image.length - 1]['#text']) ? track.image[track.image.length - 1]['#text'] : "";
+
+                getUniversalHighResCoverArt(tTitle, tArtist, tRawArt).then(artUrl => {
+                  const imgElem = document.getElementById(`hist-img-${idx}`);
+                  if (imgElem) {
+                    imgElem.src = artUrl;
+                    imgElem.onerror = () => { imgElem.src = CLEAN_FALLBACK_SVG; };
+                  }
+                });
               });
-            });
+            }
           }
         }
       } catch (err) {
@@ -548,7 +580,7 @@
     checkLiveLastFmTrack();
 
     setInterval(fetchUniversalMood, 5000);
-    setInterval(checkLiveLastFmTrack, 8000);
+    setInterval(checkLiveLastFmTrack, 5000);
   </script>
 </body>
 </html>
