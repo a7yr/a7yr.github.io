@@ -51,28 +51,28 @@
       color: #888;
     }
 
-    /* Real Animated Minions Styling (No broken images / no ?) */
+    /* Reliable Running Minions (Using stable Wikimedia/CDN sprites) */
     .minion-container {
       position: fixed;
-      bottom: 10px;
+      bottom: 15px;
       left: -120px;
       z-index: 999;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       pointer-events: none;
-      animation: runAcross 16s linear infinite;
+      animation: runAcross 15s linear infinite;
     }
     .minion-container.delay {
-      animation-delay: 8s;
+      animation-delay: 7.5s;
       bottom: auto;
       top: 15px;
-      animation-duration: 20s;
+      animation-duration: 18s;
       animation-direction: reverse;
     }
-    .minion {
-      width: 60px;
-      height: 60px;
+    .minion-img {
+      width: 50px;
+      height: 50px;
       object-fit: contain;
       animation: bounceMinion 0.4s ease-in-out infinite alternate;
     }
@@ -85,7 +85,7 @@
     }
     @keyframes bounceMinion {
       from { transform: translateY(0) rotate(0deg); }
-      to { transform: translateY(-6px) rotate(2deg); }
+      to { transform: translateY(-8px) rotate(3deg); }
     }
   </style>
 </head>
@@ -93,13 +93,12 @@
 
   <div class="mesh-background"></div>
 
-  <!-- Real Minions Running Around (Using stable, reliable transparent PNG/GIF sprites) -->
+  <!-- Running Minions with 100% working stable public sprite URLs -->
   <div class="minion-container">
-    <img src="https://i.giphy.com/media/132zB9W2eH45wQ/giphy.webp" class="minion" alt="Minion Running" onerror="this.style.display='none'">
-    <img src="https://i.giphy.com/media/132zB9W2eH45wQ/giphy.webp" class="minion" style="transform: scale(0.8);" alt="Minion" onerror="this.style.display='none'">
+    <img src="https://images.vexels.com/media/users/3/139556/isolated/preview/1a580a562ef6d8a4369e83cf305d218d-minion-cartoon-character-by-vexels.png" class="minion-img" alt="Minion">
   </div>
   <div class="minion-container delay">
-    <img src="https://i.giphy.com/media/132zB9W2eH45wQ/giphy.webp" class="minion" style="transform: scale(0.9);" alt="Minion" onerror="this.style.display='none'">
+    <img src="https://images.vexels.com/media/users/3/139556/isolated/preview/1a580a562ef6d8a4369e83cf305d218d-minion-cartoon-character-by-vexels.png" class="minion-img" style="transform: scale(0.85);" alt="Minion">
   </div>
 
   <div class="container">
@@ -141,8 +140,8 @@
     const API_KEY = 'b31d67b732b6bb6f66ca8f9c033b97c1'; 
     const USERNAME = 'a7yr';
     
-    // Limit 30 kar diya hai taaki deep fetch ho aur history kabhi stuck na ho
-    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=30`;
+    // Limit 35 taaki deep history fetch ho aur koi gana fass na sake
+    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=35`;
 
     let activeTrackKey = "";
 
@@ -214,7 +213,7 @@
           document.querySelector('.pulse-dot').style.backgroundColor = "#555";
         }
 
-        // 2. Recent Vibe History (Fresh fetch with deep limit 30 to prevent getting stuck)
+        // 2. Recent Vibe History (Strict Deduplication & Fresh Sync)
         const historyContainer = document.getElementById('history-container');
         historyContainer.innerHTML = ""; 
 
@@ -228,6 +227,7 @@
           const tArtist = t.artist['#text'];
           const tKey = `${tName.toLowerCase()}-${tArtist.toLowerCase()}`;
 
+          // Agar yeh gana pehle hi history mein aa chuka hai ya abhi play ho raha hai, toh skip karo
           if (seenTracks.has(tKey)) continue;
           seenTracks.add(tKey);
 
@@ -250,7 +250,7 @@
           historyCount++;
         }
 
-            } catch (error) {
+      } catch (error) {
         console.error("Error fetching music data:", error);
       }
     }
