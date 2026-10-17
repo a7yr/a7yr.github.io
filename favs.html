@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aarav's Favorite Tracks &lt;3</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: #050505;
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      padding: 40px 15px;
+      min-height: 100vh;
+    }
+
+    .wrapper {
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 25px;
+    }
+
+    header {
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+
+    .nav-link {
+      color: #8e8e93;
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+    }
+
+    .nav-link:hover {
+      color: #e50914;
+    }
+
+    .fav-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .fav-card {
+      background: #0f0f11;
+      border: 1px solid #1a1a1e;
+      border-radius: 16px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: border-color 0.3s ease, transform 0.2s ease;
+    }
+
+    .fav-card:hover {
+      border-color: #2b2b32;
+      transform: translateY(-2px);
+    }
+
+    .track-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .album-art {
+      width: 64px;
+      height: 64px;
+      border-radius: 10px;
+      object-fit: cover;
+      background: #1a1a1e;
+      flex-shrink: 0;
+    }
+
+    .track-details h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+
+    .track-details p {
+      color: #a0a0a0;
+      font-size: 0.88rem;
+    }
+
+    .lyric-box {
+      background: #151518;
+      border-left: 3px solid #e50914;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-style: italic;
+      color: #d1d1d6;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    .play-btn {
+      align-self: flex-start;
+      background: rgba(229, 9, 20, 0.15);
+      color: #e50914;
+      border: 1px solid rgba(229, 9, 20, 0.3);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .play-btn:hover {
+      background: #e50914;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="wrapper">
+    <header>
+      <h1>Favorite Hall of Fame 🎧</h1>
+      <p style="color: #888; font-size: 0.95rem; margin-top: 4px; margin-bottom: 12px;">Tracks that hit different</p>
+      <a href="index.html" class="nav-link">← Back to Live Tracker</a>
+    </header>
+
+    <div class="fav-list" id="favList">
+      <!-- Cards render dynamically -->
+    </div>
+  </div>
+
+  <script>
+    // Apne Favorite Songs ki list yahan modify kar sakte ho!
+    const FAVORITE_SONGS = [
+      {
+        title: "Judas",
+        artist: "Lady Gaga",
+        line: "“In the most Biblical sense, I am beyond repentance...”",
+        query: "Judas Lady Gaga"
+      },
+      {
+        title: "Ucha Lamba Kad",
+        artist: "Anand Raj Anand",
+        line: "“Tere bina lagda nahi dil mera dholna...”",
+        query: "Ucha Lamba Kad Welcome"
+      },
+      {
+        title: "Animals",
+        artist: "Martin Garrix",
+        line: "“We're the fuckin' animals!”",
+        query: "Animals Martin Garrix"
+      }
+    ];
+
+    let currentAudio = null;
+
+    async function fetchTrackData(song) {
+      let artUrl = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'><rect width='64' height='64' fill='%231a1a1e'/></svg>";
+      let previewUrl = "";
+
+      try {
+        const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(song.query)}&entity=song&limit=1`);
+        const data = await res.json();
+        if (data.results && data.results.length > 0) {
+          const track = data.results[0];
+          artUrl = track.artworkUrl100.replace('100x100bb', '300x300bb');
+          previewUrl = track.previewUrl;
+        }
+      } catch (e) {}
+
+      return { ...song, artUrl, previewUrl };
+    }
+
+    async function renderFavs() {
+      const container = document.getElementById('favList');
+      const songsData = await Promise.all(FAVORITE_SONGS.map(fetchTrackData));
+
+      container.innerHTML = songsData.map((song, index) => `
+        <div class="fav-card">
+          <div class="track-header">
+            <img class="album-art" src="${song.artUrl}" alt="${song.title}" />
+            <div class="track-details">
+              <h3>${song.title}</h3>
+              <p>${song.artist}</p>
+            </div>
+          </div>
+          <div class="lyric-box">${song.line}</div>
+          ${song.previewUrl ? `
+            <button class="play-btn" onclick="toggleAudio('${song.previewUrl}', this)">
+              ▶ Play Snippet
+            </button>
+          ` : ''}
+        </div>
+      `).join('');
+    }
+
+    function toggleAudio(url, btn) {
+      if (currentAudio) {
+        currentAudio.pause();
+        document.querySelectorAll('.play-btn').forEach(b => b.innerText = '▶ Play Snippet');
+        if (currentAudio.src === url) {
+          currentAudio = null;
+          return;
+        }
+      }
+
+      currentAudio = new Audio(url);
+      currentAudio.play();
+      btn.innerText = '⏸ Pause Snippet';
+
+      currentAudio.onended = () => {
+        btn.innerText = '▶ Play Snippet';
+        currentAudio = null;
+      };
+    }
+
+    renderFavs();
+  </script>
+</body>
+</html>
