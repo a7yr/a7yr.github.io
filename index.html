@@ -88,23 +88,23 @@
       opacity: 0.8;
     }
 
-    /* Interactive Vibe Input Box */
+    /* Protected Vibe Card */
     .status-card {
       background: #0f0f11;
       border: 1px solid #1a1a1e;
       border-radius: 12px;
-      padding: 12px 16px;
+      padding: 14px 18px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
     }
 
     .status-display {
-      font-size: 0.9rem;
+      font-size: 0.92rem;
       color: #d1d1d6;
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: space-between;
     }
 
     .status-pill {
@@ -112,9 +112,27 @@
       color: var(--accent-color);
     }
 
+    .edit-toggle-btn {
+      background: transparent;
+      border: none;
+      color: #666;
+      font-size: 0.75rem;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    .edit-toggle-btn:hover {
+      color: #aaa;
+    }
+
     .status-input-group {
-      display: flex;
+      display: none; /* Hidden by default until Admin clicks edit */
       gap: 8px;
+      margin-top: 4px;
+    }
+
+    .status-input-group.active {
+      display: flex;
     }
 
     .status-input-group input {
@@ -277,15 +295,19 @@
       </div>
     </header>
 
-    <!-- Interactive Custom Status Card -->
+    <!-- Protected Status Display -->
     <div class="status-card">
       <div class="status-display">
-        <span>Current Mood:</span>
-        <span class="status-pill" id="liveStatusText">Setting up vibes...</span>
+        <div>
+          <span>Current Mood:</span>
+          <span class="status-pill" id="liveStatusText">Chillin &amp; Listening 🎧</span>
+        </div>
+        <button class="edit-toggle-btn" id="toggleEditBtn">Edit Mood 🔒</button>
       </div>
-      <div class="status-input-group">
-        <input type="text" id="statusInput" placeholder="Update your live vibe status..." />
-        <button id="updateStatusBtn">Set Status</button>
+
+      <div class="status-input-group" id="statusInputGroup">
+        <input type="text" id="statusInput" placeholder="Enter new vibe status..." />
+        <button id="updateStatusBtn">Save</button>
       </div>
     </div>
 
@@ -349,6 +371,7 @@
 
     const LASTFM_USERNAME = "a7yr";
     const LASTFM_API_KEY = "b31d67b732b6bb6f66ca8f9c033b97c1";
+    const ADMIN_PASSCODE = "aarav123"; // Apni pasand ka Secret Password rakhein
     let currentSavedTrackKey = "";
     const colorThief = new ColorThief();
 
@@ -381,7 +404,25 @@
     const currentImg = document.getElementById('currentArt');
     currentImg.addEventListener('load', () => updateDynamicTheme(currentImg));
 
-    // Custom Live Vibe/Status Handlers
+    // Protected Custom Status Logic
+    const toggleEditBtn = document.getElementById("toggleEditBtn");
+    const statusInputGroup = document.getElementById("statusInputGroup");
+
+    toggleEditBtn.addEventListener("click", () => {
+      if (statusInputGroup.classList.contains("active")) {
+        statusInputGroup.classList.remove("active");
+        toggleEditBtn.innerText = "Edit Mood 🔒";
+      } else {
+        const pass = prompt("Enter Admin Secret Key to edit mood:");
+        if (pass === ADMIN_PASSCODE) {
+          statusInputGroup.classList.add("active");
+          toggleEditBtn.innerText = "Close ✖";
+        } else if (pass !== null) {
+          alert("Incorrect Passcode! Access Denied.");
+        }
+      }
+    });
+
     async function updateCustomStatus(statusText) {
       if (!statusText || !statusText.trim()) return;
       try {
@@ -390,6 +431,8 @@
           updatedAt: serverTimestamp()
         });
         document.getElementById("statusInput").value = "";
+        statusInputGroup.classList.remove("active");
+        toggleEditBtn.innerText = "Edit Mood 🔒";
       } catch (e) {
         console.error("Error updating status:", e);
       }
