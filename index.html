@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AaravReallyGoneCrazy</title>
+  <title>Acentyr | Live Activity</title>
   <link rel="stylesheet" href="style.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <style>
@@ -38,6 +38,13 @@
       margin: 2px 0 0 0;
       color: #888;
     }
+    .time-container {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #777;
+      margin-top: 6px;
+    }
   </style>
 </head>
 <body>
@@ -65,9 +72,13 @@
             <h2 id="song-title" class="song-title">Loading track...</h2>
             <p id="artist-name" class="artist-name">Fetching data</p>
             
-            <div class="progress-bar-container">
+            <div class="progress-bar-container" style="margin-top: 12px;">
               <div class="progress-bar">
-                <div class="progress-fill"></div>
+                <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
+              </div>
+              <div class="time-container">
+                <span id="current-time">0:00</span>
+                <span id="total-duration">0:00</span>
               </div>
             </div>
           </div>
@@ -91,21 +102,34 @@
     const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=10`;
 
     let lastTrackName = "";
+    let trackDurationSec = 0;
+    let trackStartTime = 0;
+    let progressTimer = null;
 
-    // Fast backup function to fetch cover art from iTunes if Last.fm doesn't have it
-    async function getItunesArt(artist, song) {
+    // Helper to format seconds into m:ss format
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+
+    // Fetch cover art & total duration from iTunes API
+    async function getItunesDetails(artist, song) {
       try {
         const query = encodeURIComponent(`${artist} ${song}`);
         const res = await fetch(`https://itunes.apple.com/search?term=${query}&entity=song&limit=1`);
         const data = await res.json();
         if (data.results && data.results.length > 0) {
-          // Swap iTunes default 100x100 resolution URL to high quality 300x300
-          return data.results[0].artworkUrl100.replace('100x100bb', '300x300bb');
+          const trackData = data.results[0];
+          return {
+            art: trackData.artworkUrl100.replace('100x100bb', '300x300bb'),
+            duration: trackData.trackTimeMillis ? trackData.trackTimeMillis / 1000 : 210 // default 3.5 mins if missing
+          };
         }
       } catch (e) {
-        console.error("iTunes cover fetch failed", e);
+        console.error("iTunes fetch failed", e);
       }
-      return null;
+      return { art: null, duration: 210 };
     }
 
     async function getLiveSongs() {
@@ -116,31 +140,37 @@
         const tracks = data.recenttracks.track;
         if (!tracks || tracks.length === 0) return;
 
-        // 1. Handle Main Track
         const currentTrack = tracks[0];
         const trackName = currentTrack.name;
         const artistName = currentTrack.artist['#text'];
-        
-        // Check Last.fm image first
-        let artUrl = (currentTrack.image && currentTrack.image[3] && currentTrack.image[3]['#text']) 
-          ? currentTrack.image[3]['#text'] 
-          : '';
-
-        // If Last.fm art is missing, query iTunes instantly
-        if (!artUrl || artUrl.includes('2a96cbd8b46e442fc41c2b86b821562f')) {
-          artUrl = await getItunesArt(artistName, trackName) || 'https://placehold.co/150x150/111/333?text=No+Art';
-        }
-
         const isPlaying = currentTrack['@attr'] && currentTrack['@attr'].nowplaying === 'true';
-        const indicator = document.querySelector('.live-indicator span:last-child');
-        
+
+        // Check if track changed
         if (trackName !== lastTrackName) {
           lastTrackName = trackName;
           document.getElementById('song-title').innerText = trackName;
           document.getElementById('artist-name').innerText = artistName;
+
+          // Fetch Art and Duration from iTunes
+          let artUrl = (currentTrack.image && currentTrack.image[3] && currentTrack.image[3]['#text']) 
+            ? currentTrack.image[3]['#text'] 
+            : '';
+
+          const itunes = await getItunesDetails(artistName, trackName);
+          
+          if (!artUrl || artUrl.includes('2a96cbd8b46e442fc41c2b86b821562f')) {
+            artUrl = itunes.art || 'https://placehold.co/150x150/111/333?text=No+Art';
+          }
+          
           document.getElementById('album-art').src = artUrl;
+
+          // Reset timer trackers for progress bar
+          trackDurationSec = itunes.duration;
+          trackStartTime = Date.now(); // Estimate start point based on fetch time
+          document.getElementById('total-duration').innerText = formatTime(trackDurationSec);
         }
 
+        const indicator = document.querySelector('.live-indicator span:last-child');
         if (isPlaying) {
           indicator.innerText = "Now Playing";
           document.querySelector('.pulse-dot').style.backgroundColor = "#ff2a5f";
@@ -149,30 +179,23 @@
           document.querySelector('.pulse-dot').style.backgroundColor = "#555";
         }
 
-        // 2. Handle the Recent History List
+        // Render History List
         const historyContainer = document.getElementById('history-container');
         historyContainer.innerHTML = ""; 
 
         for (let i = 1; i < tracks.length; i++) {
           const t = tracks[i];
-          const tName = t.name;
-          const tArtist = t.artist['#text'];
-          
-          let tArt = (t.image && t.image[1] && t.image[1]['#text']) ? t.image[1]['#text'] : '';
-          if (!tArt || tArt.includes('2a96cbd8b46e442fc41c2b86b821562f')) {
-            tArt = await getItunesArt(tArtist, tName) || 'https://placehold.co/40x40/111/333?text=?';
-          }
+          let tArt = (t.image && t.image[1] && t.image[1]['#text']) ? t.image[1]['#text'] : 'https://placehold.co/40x40/111/333?text=?';
 
-          const itemHTML = `
+          historyContainer.innerHTML += `
             <div class="history-item">
               <img src="${tArt}" alt="Art">
               <div class="history-info">
-                <h4>${tName}</h4>
-                <p>${tArtist}</p>
+                <h4>${t.name}</h4>
+                <p>${t.artist['#text']}</p>
               </div>
             </div>
           `;
-          historyContainer.innerHTML += itemHTML;
         }
 
       } catch (error) {
@@ -180,8 +203,22 @@
       }
     }
 
+    // Smooth second-by-second progress bar animation loop
+    function updateProgressAnimation() {
+      if (trackDurationSec > 0) {
+        const elapsedSec = (Date.now() - trackStartTime) / 1000;
+        let progressPercent = (elapsedSec / trackDurationSec) * 100;
+        
+        if (progressPercent > 100) progressPercent = 100;
+
+        document.getElementById('progress-fill').style.width = `${progressPercent}%`;
+        document.getElementById('current-time').innerText = formatTime(elapsedSec);
+      }
+    }
+
     getLiveSongs();
-    setInterval(getLiveSongs, 15000); 
+    setInterval(getLiveSongs, 15000); // Check Last.fm every 15s
+    setInterval(updateProgressAnimation, 1000); // Smooth update every 1s
   </script>
 </body>
 </html>
