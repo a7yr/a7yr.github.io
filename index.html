@@ -51,41 +51,41 @@
       color: #888;
     }
 
-    /* Minions Running Around */
+    /* Real Animated Minions Styling (No broken images / no ?) */
     .minion-container {
       position: fixed;
       bottom: 10px;
-      left: -100px;
+      left: -120px;
       z-index: 999;
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 8px;
       pointer-events: none;
-      animation: runAcross 14s linear infinite;
+      animation: runAcross 16s linear infinite;
     }
     .minion-container.delay {
-      animation-delay: 7s;
+      animation-delay: 8s;
       bottom: auto;
       top: 15px;
-      animation-duration: 18s;
+      animation-duration: 20s;
       animation-direction: reverse;
     }
     .minion {
-      width: 55px;
-      height: 55px;
+      width: 60px;
+      height: 60px;
       object-fit: contain;
-      animation: bounceMinion 0.5s ease-in-out infinite alternate;
+      animation: bounceMinion 0.4s ease-in-out infinite alternate;
     }
     @keyframes runAcross {
-      0% { left: -120px; transform: scaleX(1); }
+      0% { left: -140px; transform: scaleX(1); }
       49% { transform: scaleX(1); }
       50% { left: 105vw; transform: scaleX(-1); }
       99% { transform: scaleX(-1); }
-      100% { left: -120px; transform: scaleX(1); }
+      100% { left: -140px; transform: scaleX(1); }
     }
     @keyframes bounceMinion {
       from { transform: translateY(0) rotate(0deg); }
-      to { transform: translateY(-8px) rotate(3deg); }
+      to { transform: translateY(-6px) rotate(2deg); }
     }
   </style>
 </head>
@@ -93,13 +93,13 @@
 
   <div class="mesh-background"></div>
 
-  <!-- Minions Running Around -->
+  <!-- Real Minions Running Around (Using stable, reliable transparent PNG/GIF sprites) -->
   <div class="minion-container">
-    <img src="https://api.iconify.design/fluent-emoji:banana.svg" class="minion" style="width: 30px; height: 30px;" alt="Banana">
-    <img src="https://api.iconify.design/noto:minion.svg" class="minion" alt="Minion">
+    <img src="https://i.giphy.com/media/132zB9W2eH45wQ/giphy.webp" class="minion" alt="Minion Running" onerror="this.style.display='none'">
+    <img src="https://i.giphy.com/media/132zB9W2eH45wQ/giphy.webp" class="minion" style="transform: scale(0.8);" alt="Minion" onerror="this.style.display='none'">
   </div>
   <div class="minion-container delay">
-    <img src="https://api.iconify.design/noto:minion.svg" class="minion" style="transform: scale(0.8);" alt="Minion">
+    <img src="https://i.giphy.com/media/132zB9W2eH45wQ/giphy.webp" class="minion" style="transform: scale(0.9);" alt="Minion" onerror="this.style.display='none'">
   </div>
 
   <div class="container">
@@ -141,7 +141,8 @@
     const API_KEY = 'b31d67b732b6bb6f66ca8f9c033b97c1'; 
     const USERNAME = 'a7yr';
     
-    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=12`;
+    // Limit 30 kar diya hai taaki deep fetch ho aur history kabhi stuck na ho
+    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=30`;
 
     let activeTrackKey = "";
 
@@ -213,7 +214,7 @@
           document.querySelector('.pulse-dot').style.backgroundColor = "#555";
         }
 
-        // 2. Recent Vibe History (Synced across all devices via Last.fm Cloud API)
+        // 2. Recent Vibe History (Fresh fetch with deep limit 30 to prevent getting stuck)
         const historyContainer = document.getElementById('history-container');
         historyContainer.innerHTML = ""; 
 
@@ -234,12 +235,12 @@
 
           let tArt = (t.image && t.image[1] && t.image[1]['#text']) ? t.image[1]['#text'] : '';
           if (!tArt || tArt.includes('2a96cbd8b46e442fc41c2b86b821562f') || tArt === '') {
-            tArt = await getBestAlbumArt(tArtist, tName) || 'https://placehold.co/45x45/111/333?text=?';
+            tArt = await getBestAlbumArt(tArtist, tName) || 'https://placehold.co/45x45/111/333?text=Art';
           }
 
           historyContainer.innerHTML += `
             <div class="history-item">
-              <img src="${tArt}" alt="Art">
+              <img src="${tArt}" alt="Art" onerror="this.src='https://placehold.co/45x45/111/333?text=Art'">
               <div class="history-info">
                 <h4>${tName}</h4>
                 <p>${tArtist}</p>
@@ -249,7 +250,7 @@
           historyCount++;
         }
 
-      } catch (error) {
+            } catch (error) {
         console.error("Error fetching music data:", error);
       }
     }
