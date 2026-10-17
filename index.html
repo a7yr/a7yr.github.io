@@ -21,6 +21,11 @@
       padding: 8px 12px;
       border-radius: 12px;
       border: 1px solid rgba(255, 255, 255, 0.05);
+      animation: fadeIn 0.4s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     .history-item img {
       width: 45px;
@@ -82,10 +87,10 @@
     const API_KEY = 'b31d67b732b6bb6f66ca8f9c033b97c1'; 
     const USERNAME = 'a7yr';
     
-    // Limit 20 kar diya hai taaki naye gaane deep fetch hokar history mein turant dikhein
-    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=20`;
+    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=5`;
 
     let activeTrackKey = "";
+    let localSongHistory = []; // Browser memory jo har naye gaane ko turant top par add karegi
 
     async function getItunesArt(artist, song) {
       try {
@@ -116,8 +121,23 @@
         
         const isPlaying = currentTrack['@attr'] && currentTrack['@attr'].nowplaying === 'true';
 
-        // Main card update
+        // Agar gaana change hua hai, toh main card update karo aur purane wale ko history mein daal do!
         if (trackUniqueKey !== activeTrackKey) {
+          
+          // Agar pehle se koi active track tha, toh usko history ke top par push kar do
+          if (activeTrackKey !== "") {
+            const prevTitle = document.getElementById('song-title').innerText;
+            const prevArtist = document.getElementById('artist-name').innerText;
+            const prevArt = document.getElementById('album-art').src;
+
+            // Check karo ki history mein already na ho taaki duplicate na bane
+            const exists = localSongHistory.some(item => item.title === prevTitle && item.artist === prevArtist);
+            if (!exists) {
+              localSongHistory.unshift({ title: prevTitle, artist: prevArtist, art: prevArt });
+              if (localSongHistory.length > 10) localSongHistory.pop(); // Sirf last 10 rakho
+            }
+          }
+
           activeTrackKey = trackUniqueKey;
           document.getElementById('song-title').innerText = trackName;
           document.getElementById('artist-name').innerText = artistName;
@@ -131,6 +151,9 @@
           }
           
           document.getElementById('album-art').src = artUrl;
+          
+          // Render history instantly
+          renderHistory();
         }
 
         const indicatorText = document.getElementById('status-text');
@@ -142,51 +165,57 @@
           document.querySelector('.pulse-dot').style.backgroundColor = "#555";
         }
 
-        // Recent Vibe History render (Dynamic aur fresh tracks ke sath)
-        const historyContainer = document.getElementById('history-container');
-        historyContainer.innerHTML = ""; 
-
-        let historyCount = 0;
-        let seenTracks = new Set();
-        // Main current song ko set mein daal do taaki wo history mein repeat na ho
-        seenTracks.add(`${trackName.toLowerCase()}-${artistName.toLowerCase()}`);
-
-        for (let i = 1; i < tracks.length; i++) {
-          const t = tracks[i];
-          const tName = t.name;
-          const tArtist = t.artist['#text'];
-          const tKey = `${tName.toLowerCase()}-${tArtist.toLowerCase()}`;
-
-          // Duplicate gaane skip karo
-          if (seenTracks.has(tKey)) continue;
-          seenTracks.add(tKey);
-
-          if (historyCount >= 10) break; // Sirf top 10 unique recent tracks dikhao
-
-          let tArt = (t.image && t.image[1] && t.image[1]['#text']) ? t.image[1]['#text'] : '';
-          if (!tArt || tArt.includes('2a96cbd8b46e442fc41c2b86b821562f')) {
-            tArt = await getItunesArt(tArtist, tName) || 'https://placehold.co/45x45/111/333?text=?';
-          }
-
-          historyContainer.innerHTML += `
-            <div class="history-item">
-              <img src="${tArt}" alt="Art">
-              <div class="history-info">
-                <h4>${tName}</h4>
-                <p>${tArtist}</p>
-              </div>
-            </div>
-          `;
-          historyCount++;
-        }
-
       } catch (error) {
         console.error("Error fetching music data:", error);
       }
     }
 
+    // Local history list ko screen par render karne ka function
+    function renderHistory() {
+      const historyContainer = document.getElementById('history-container');
+      if (localSongHistory.length === 0) {
+        historyContainer.innerHTML = `<p style="color: #666; font-size: 14px;">Play next song to build history...</p>`;
+        return;
+      }
+
+      historyContainer.innerHTML = "";
+      localSongHistoryforEach = localSongHistory.forEach(song => {
+        historyContainer.innerHTML += `
+          <div class="history-item">
+            <img src="${song.art}" alt="Art">
+            <div class="history-info">
+              <h4>${song.title}</h4>
+              <p>${song.artist}</p>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    // Fix for syntax safety in loop
+    function renderHistory() {
+      const historyContainer = document.getElementById('history-container');
+      if (localSongHistory.length === 0) {
+        historyContainer.innerHTML = `<p style="color: #666; font-size: 14px;">Play next song to build history...</p>`;
+        return;
+      }
+
+      historyContainer.innerHTML = "";
+      for (let song of localSongHistory) {
+        historyContainer.innerHTML += `
+          <div class="history-item">
+            <img src="${song.art}" alt="Art">
+            <div class="history-info">
+              <h4>${song.title}</h4>
+              <p>${song.artist}</p>
+            </div>
+          </div>
+        `;
+      }
+    }
+
     getLiveSongs();
-    setInterval(getLiveSongs, 6000); // Har 6 seconds mein fresh check karega taaki history turant update ho
+    setInterval(getLiveSongs, 6000); 
   </script>
 </body>
 </html>
