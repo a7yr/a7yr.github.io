@@ -151,7 +151,7 @@
       cursor: pointer;
     }
 
-    /* Photo Slider Styles */
+    /* Photo Slider Styles with Blurred Background Fill */
     .slider-card {
       background: #0d0d10;
       border: 1px solid rgba(255, 255, 255, 0.08);
@@ -164,9 +164,23 @@
     .slider-container {
       position: relative;
       width: 100%;
-      height: 420px;
-      background: #09090c;
+      height: 400px;
+      background: #0b0b0f;
       overflow: hidden;
+    }
+
+    .slide-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      filter: blur(20px) brightness(0.35);
+      transform: scale(1.1);
+      opacity: 0;
+      transition: opacity 0.5s ease-in-out;
     }
 
     .slide {
@@ -177,10 +191,11 @@
       height: 100%;
       opacity: 0;
       transition: opacity 0.5s ease-in-out;
-      object-fit: cover;
+      object-fit: contain;
+      z-index: 2;
     }
 
-    .slide.active {
+    .slide.active, .slide-bg.active {
       opacity: 1;
     }
 
@@ -191,7 +206,7 @@
       transform: translateX(-50%);
       display: flex;
       gap: 6px;
-      z-index: 2;
+      z-index: 3;
     }
 
     .dot {
@@ -298,8 +313,13 @@
     <div class="slider-card">
       <div class="slider-container" id="sliderContainer">
         <!-- Default Images fallback -->
+        <div class="slide-bg active" style="background-image: url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&auto=format&fit=crop&q=60');"></div>
         <img class="slide active" src="https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&auto=format&fit=crop&q=60" alt="Vibe 1" />
+        
+        <div class="slide-bg" style="background-image: url('https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600&auto=format&fit=crop&q=60');"></div>
         <img class="slide" src="https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600&auto=format&fit=crop&q=60" alt="Vibe 2" />
+        
+        <div class="slide-bg" style="background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=60');"></div>
         <img class="slide" src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=60" alt="Vibe 3" />
       </div>
       <div class="slider-dots" id="sliderDots">
@@ -367,9 +387,10 @@
       }
     });
 
-    // Slider Engine
+    // Slider Engine with Blurred Background Sync
     function initSlider() {
       var slides = document.querySelectorAll(".slide");
+      var bgSlides = document.querySelectorAll(".slide-bg");
       var dots = document.querySelectorAll(".dot");
       if (slides.length === 0) return;
 
@@ -377,10 +398,12 @@
 
       function showSlide(index) {
         slides.forEach(function(s){ s.classList.remove("active"); });
+        bgSlides.forEach(function(b){ b.classList.remove("active"); });
         dots.forEach(function(d){ d.classList.remove("active"); });
 
         currentSlide = (index + slides.length) % slides.length;
         slides[currentSlide].classList.add("active");
+        if(bgSlides[currentSlide]) bgSlides[currentSlide].classList.add("active");
         dots[currentSlide].classList.add("active");
       }
 
@@ -412,6 +435,7 @@
 
             for (var i = 0; i < config.photos.length; i++) {
               var activeClass = i === 0 ? "active" : "";
+              htmlSlides += '<div class="slide-bg ' + activeClass + '" style="background-image: url(\'' + config.photos[i] + '\');"></div>';
               htmlSlides += '<img class="slide ' + activeClass + '" src="' + config.photos[i] + '" alt="Vibe ' + (i+1) + '" />';
               htmlDots += '<span class="dot ' + activeClass + '" data-index="' + i + '"></span>';
             }
