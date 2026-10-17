@@ -158,7 +158,7 @@
       <div class="subtitle">
         <span>Live music tracking bwhahaha</span>
         <span>•</span>
-        <span>Local Time: <span id="clock">12:51:17 AM</span> 🕒</span>
+        <span>Local Time: <span id="clock">12:58:20 AM</span> 🕒</span>
       </div>
     </header>
 
@@ -182,7 +182,7 @@
         <div class="vibe-item">
           <div class="track-info-sm">
             <h4>Loading Activity...</h4>
-            <p>Fetching last 10 tracks</p>
+            <p>Fetching multi-source album covers...</p>
           </div>
         </div>
       </div>
@@ -229,18 +229,48 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // Secondary Art Provider: iTunes Search API Fallback
-    async function fetchFallbackAlbumArt(title, artist) {
+    // Clean title for better search matching
+    function cleanSearchQuery(title, artist) {
+      const cleanedTitle = title.replace(/\(From ".*?"\)/gi, '').replace(/\[.*?\]|\(.*?\)/g, '').trim();
+      return { cleanedTitle, query: encodeURIComponent(`${cleanedTitle} ${artist}`) };
+    }
+
+    // MULTI-SOURCE ALBUM ART SCRAPER / FETCH CHAIN
+    async function fetchBestAlbumArt(title, artist, defaultArt = "") {
+      if (defaultArt && !defaultArt.includes("2a9b3a5c119d2a7156f7c70c778c3194") && !defaultArt.includes("placeholder")) {
+        return defaultArt;
+      }
+
+      const { cleanedTitle, query } = cleanSearchQuery(title, artist);
+
+      // 1. Source: iTunes Search API
       try {
-        const query = encodeURIComponent(`${title} ${artist}`);
         const res = await fetch(`https://itunes.apple.com/search?term=${query}&entity=song&limit=1`);
         const data = await res.json();
-        if (data.results && data.results.length > 0) {
-          return data.results[0].artworkUrl100.replace('100x100bb', '300x300bb');
+        if (data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
+          return data.results[0].artworkUrl100.replace('100x100bb', '400x400bb');
         }
-      } catch (err) {
-        console.warn("iTunes fallback art error:", err);
-      }
+      } catch (e) { console.warn("iTunes fetch failed"); }
+
+      // 2. Source: Deezer API
+      try {
+        const res = await fetch(`https://api.deezer.com/search?q=${query}&limit=1`);
+        const data = await res.json();
+        if (data.data && data.data.length > 0 && data.data[0].album && data.data[0].album.cover_medium) {
+          return data.data[0].album.cover_medium;
+        }
+      } catch (e) { console.warn("Deezer fetch failed"); }
+
+      // 3. Source: MusicBrainz API
+      try {
+        const res = await fetch(`https://musicbrainz.org/ws/2/recording/?query=recording:${encodeURIComponent(cleanedTitle)}%20AND%20artist:${encodeURIComponent(artist)}&fmt=json&limit=1`);
+        const data = await res.json();
+        if (data.recordings && data.recordings.length > 0 && data.recordings[0].releases && data.recordings[0].releases.length > 0) {
+          const releaseId = data.recordings[0].releases[0].id;
+          return `https://coverartarchive.org/release/${releaseId}/front-250`;
+        }
+      } catch (e) { console.warn("MusicBrainz fetch failed"); }
+
       return "https://via.placeholder.com/90/1a1a1e/888888?text=Art";
     }
 
@@ -258,34 +288,30 @@
     }
 
     async function fetchLastFmActivity() {
-      const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${LASTFM_USERNAME}&api_key=${LASTFM_API_KEY}&format=json&limit=10`;
+      const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${LASTFM_USERNAME}&api_key=${LASTFM_API_KEY}&format=json&limit=1`;
 
       try {
         const response = await fetch(url);
         const data = await response.json();
 
         if (data.recenttracks && data.recenttracks.track.length > 0) {
-          const tracks = data.recenttracks.track;
-          const currentTrack = tracks[0];
-
+          const currentTrack = data.recenttracks.track[0];
           const currentTitle = currentTrack.name;
           const currentArtist = currentTrack.artist['#text'];
-          let currentArt = currentTrack.image ? currentTrack.image[2]['#text'] : "";
+          let rawArt = currentTrack.image ? currentTrack.image[2]['#text'] : "";
           const isNowPlaying = currentTrack['@attr'] && currentTrack['@attr'].nowplaying === "true";
 
-          if (!currentArt) {
-            currentArt = await fetchFallbackAlbumArt(currentTitle, currentArtist);
-          }
+          const bestArt = await fetchBestAlbumArt(currentTitle, currentArtist, rawArt);
 
           document.getElementById('statusBadge').innerText = isNowPlaying ? "NOW PLAYING" : "LAST PLAYED";
           document.getElementById('currentTitle').innerText = currentTitle;
           document.getElementById('currentArtist').innerText = currentArtist;
-          document.getElementById('currentArt').src = currentArt;
+          document.getElementById('currentArt').src = bestArt;
 
           const currentKey = `${currentArtist} - ${currentTitle}`;
           if (currentKey !== lastSavedTrackKey) {
             lastSavedTrackKey = currentKey;
-            await saveTrackToDb(currentTitle, currentArtist, currentArt);
+            await saveTrackToDb(currentTitle, currentArtist, bestArt);
           }
         }
       } catch (err) {
@@ -324,13 +350,13 @@
 
     function escapeHTML(str) {
       return (str || "").replace(/[&<>'"]/g, 
-        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+        tag => ({ '&': '&amp;', '<': '&lt;'> '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
       );
     }
 
     listenToVibeHistory();
     fetchLastFmActivity();
-    setInterval(fetchLastFmActivity, 10000); // Auto update every 10 sec
+    setInterval(fetchLastFmActivity, 10000);
   </script>
 </body>
 </html>
