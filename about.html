@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About Me // a7yr &lt;3</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    :root {
+      --accent-color: #66fcf1;
+      --accent-glow: rgba(102, 252, 241, 0.25);
+      --accent-gradient: linear-gradient(135deg, #ffffff 30%, #66fcf1 100%);
+    }
+
+    body {
+      background-color: #050505;
+      color: #f0f0f5;
+      display: flex;
+      justify-content: center;
+      padding: 45px 15px;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .ambient-glow {
+      position: fixed;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 650px;
+      height: 650px;
+      background: radial-gradient(circle, var(--accent-glow) 0%, rgba(5, 5, 5, 0) 70%);
+      z-index: 0;
+      pointer-events: none;
+      filter: blur(70px);
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 25px;
+    }
+
+    header {
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 2.2rem;
+      font-weight: 900;
+      letter-spacing: -0.8px;
+      margin-bottom: 6px;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 2px 10px rgba(0,0,0,0.5));
+    }
+
+    .subtitle {
+      color: #a0a0ab;
+      font-size: 0.92rem;
+      font-weight: 500;
+    }
+
+    .nav-links {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 10px;
+    }
+
+    .nav-link {
+      color: var(--accent-color);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    /* Admin Panel Styling */
+    .status-card {
+      background: #0d0d10;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .status-display {
+      font-size: 0.92rem;
+      color: #c5c5d0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .edit-toggle-btn {
+      background: transparent;
+      border: none;
+      color: var(--accent-color);
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    .admin-form-group {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding-top: 12px;
+    }
+
+    .admin-form-group.active {
+      display: flex;
+    }
+
+    .admin-form-group input {
+      background: #15151a;
+      border: 1px solid #282830;
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #fff;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    .admin-form-group button {
+      background: var(--accent-color);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* Photo Slider Styles */
+    .slider-card {
+      background: #0d0d10;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+
+    .slider-container {
+      position: relative;
+      width: 100%;
+      height: 320px;
+      background: #15151a;
+    }
+
+    .slide {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      transition: opacity 0.5s ease-in-out;
+      object-fit: cover;
+    }
+
+    .slide.active {
+      opacity: 1;
+    }
+
+    .slider-dots {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.4);
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .dot.active {
+      background: var(--accent-color);
+      box-shadow: 0 0 8px var(--accent-color);
+    }
+
+    /* Content Cards */
+    .card {
+      background: #0d0d10;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+
+    .card h3 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card p, .card li {
+      color: #b0b0bc;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      font-weight: 500;
+    }
+
+    .card ul {
+      list-style-type: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-left: 5px;
+    }
+
+    .card li::before {
+      content: "▪ ";
+      color: var(--accent-color);
+    }
+
+    /* Vibe Player Box */
+    .vibe-player {
+      background: #121217;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 12px 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .vibe-player audio {
+      width: 100%;
+      height: 32px;
+      outline: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="ambient-glow"></div>
+
+  <div class="wrapper" id="mainWrapper">
+    <header>
+      <h1>About Me // a7yr &lt;3</h1>
+      <div class="subtitle">Just a guy building random stuff on the internet</div>
+      <div class="nav-links">
+        <a href="index.html" class="nav-link">← Live Vibe</a>
+        <a href="favs.html" class="nav-link">♥ Favorite Songs</a>
+      </div>
+    </header>
+
+    <!-- Admin Panel for Background Music & Photos -->
+    <div class="status-card">
+      <div class="status-display">
+        <span style="font-weight: 600; color: #a5a5b0;">Admin Customizer</span>
+        <button class="edit-toggle-btn" id="toggleAdminBtn">Admin Login 🔒</button>
+      </div>
+
+      <div class="admin-form-group" id="adminFormGroup">
+        <input type="text" id="bgMusicInput" placeholder="Background Music Audio URL (.mp3)" />
+        <input type="text" id="photo1Input" placeholder="Photo 1 Image URL" />
+        <input type="text" id="photo2Input" placeholder="Photo 2 Image URL" />
+        <input type="text" id="photo3Input" placeholder="Photo 3 Image URL" />
+        <button id="saveConfigBtn">Save Settings</button>
+      </div>
+    </div>
+
+    <!-- Photo Slider Section -->
+    <div class="slider-card">
+      <div class="slider-container" id="sliderContainer">
+        <!-- Default Images fallback -->
+        <img class="slide active" src="https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&auto=format&fit=crop&q=60" alt="Vibe 1" />
+        <img class="slide" src="https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600&auto=format&fit=crop&q=60" alt="Vibe 2" />
+        <img class="slide" src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=60" alt="Vibe 3" />
+      </div>
+      <div class="slider-dots" id="sliderDots">
+        <span class="dot active" data-index="0"></span>
+        <span class="dot" data-index="1"></span>
+        <span class="dot" data-index="2"></span>
+      </div>
+    </div>
+
+    <!-- Background Music Player Widget -->
+    <div class="card" id="playerCard" style="display:none;">
+      <h3>🎧 Vibe Background Track</h3>
+      <div class="vibe-player">
+        <audio id="bgAudio" controls loop></audio>
+      </div>
+    </div>
+
+    <!-- Who Am I Section -->
+    <div class="card">
+      <h3>🚀 Who Am I</h3>
+      <p>Hey, I'm a7yr aka Aarav. Just a guy who likes building random stuff on the internet, experimenting with code, and turning random ideas into actual projects.</p>
+      <p>Into web development, tech, and basically anything that makes me go <em>"wait, can i actually build this?"</em> Sometimes it's a website, sometimes a random tool, or a project started at 2 AM for absolutely no reason lmao.</p>
+    </div>
+
+    <!-- Music & Tracking -->
+    <div class="card">
+      <h3>🎵 Music & Obsessions</h3>
+      <p>My music taste is all over the place ngl—hip-hop, lo-fi, vibe tracks, bollywood, and old songs depending entirely on the mood.</p>
+      <p>I'm also low-key obsessed with tracking what I'm listening to. That's literally why I built this whole music tracking dashboard. Bro turned listening to music into a full coding project 💀.</p>
+    </div>
+
+    <!-- Anime & Shows -->
+    <div class="card">
+      <h3>⚡ Anime & Shows</h3>
+      <p>Anime is a huge part of the vibe—good stories, interesting characters, action, plot twists, and moments that stay in your head for days. Same goes for series that hook you so hard you end up binging way more episodes than planned.</p>
+    </div>
+
+    <!-- Hobbies & Free Time -->
+    <div class="card">
+      <h3>🕹️ What I Do When Not Coding</h3>
+      <ul>
+        <li>Playing Minecraft</li>
+        <li>Watching anime or binge-worthy shows</li>
+        <li>Listening to music on repeat</li>
+        <li>Thinking about random projects I'll start and forget for a while lmao</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    var ADMIN_PASSCODE = "aarav123";
+    var RTDB_ABOUT_URL = "https://a7yrshitvc-default-rtdb.asia-southeast1.firebasedatabase.app/about_config.json";
+
+    var isAdminLoggedIn = false;
+    var toggleAdminBtn = document.getElementById("toggleAdminBtn");
+    var adminFormGroup = document.getElementById("adminFormGroup");
+
+    // Admin Toggle
+    toggleAdminBtn.addEventListener("click", function() {
+      if (!isAdminLoggedIn) {
+        var pass = prompt("Enter Admin Passcode:");
+        if (pass === ADMIN_PASSCODE) {
+          isAdminLoggedIn = true;
+          adminFormGroup.classList.add("active");
+          toggleAdminBtn.innerText = "Lock Admin 🔓";
+        } else if (pass !== null) {
+          alert("Incorrect Passcode!");
+        }
+      } else {
+        isAdminLoggedIn = false;
+        adminFormGroup.classList.remove("active");
+        toggleAdminBtn.innerText = "Admin Login 🔒";
+      }
+    });
+
+    // Slider Engine
+    function initSlider() {
+      var slides = document.querySelectorAll(".slide");
+      var dots = document.querySelectorAll(".dot");
+      if (slides.length === 0) return;
+
+      var currentSlide = 0;
+
+      function showSlide(index) {
+        slides.forEach(function(s){ s.classList.remove("active"); });
+        dots.forEach(function(d){ d.classList.remove("active"); });
+
+        currentSlide = (index + slides.length) % slides.length;
+        slides[currentSlide].classList.add("active");
+        dots[currentSlide].classList.add("active");
+      }
+
+      setInterval(function() {
+        showSlide(currentSlide + 1);
+      }, 4000);
+
+      dots.forEach(function(dot) {
+        dot.addEventListener("click", function() {
+          var idx = parseInt(this.getAttribute("data-index"));
+          showSlide(idx);
+        });
+      });
+    }
+
+    // Load Config from Firebase
+    function loadConfig() {
+      fetch(RTDB_ABOUT_URL)
+        .then(function(res){ return res.json(); })
+        .then(function(config){
+          if (!config) return;
+
+          // Set Background Music
+          if (config.audio) {
+            var playerCard = document.getElementById("playerCard");
+            var audioEl = document.getElementById("bgAudio");
+            if (playerCard && audioEl) {
+              audioEl.src = config.audio;
+              playerCard.style.display = "block";
+            }
+          }
+
+          // Set Photos if provided
+          if (config.photos && config.photos.length > 0) {
+            var container = document.getElementById("sliderContainer");
+            var dotsContainer = document.getElementById("sliderDots");
+            var htmlSlides = "";
+            var htmlDots = "";
+
+            for (var i = 0; i < config.photos.length; i++) {
+              var activeClass = i === 0 ? "active" : "";
+              htmlSlides += '<img class="slide ' + activeClass + '" src="' + config.photos[i] + '" alt="Vibe ' + (i+1) + '" />';
+              htmlDots += '<span class="dot ' + activeClass + '" data-index="' + i + '"></span>';
+            }
+
+            container.innerHTML = htmlSlides;
+            dotsContainer.innerHTML = htmlDots;
+            initSlider();
+          } else {
+            initSlider();
+          }
+        })
+        .catch(function(){
+          initSlider();
+        });
+    }
+
+    // Save Config to Firebase
+    document.getElementById("saveConfigBtn").addEventListener("click", function() {
+      var audio = document.getElementById("bgMusicInput").value.trim();
+      var p1 = document.getElementById("photo1Input").value.trim();
+      var p2 = document.getElementById("photo2Input").value.trim();
+      var p3 = document.getElementById("photo3Input").value.trim();
+
+      var photos = [];
+      if (p1) photos.push(p1);
+      if (p2) photos.push(p2);
+      if (p3) photos.push(p3);
+
+      var payload = {
+        audio: audio,
+        photos: photos
+      };
+
+      fetch(RTDB_ABOUT_URL, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).then(function() {
+        alert("Settings saved successfully!");
+        adminFormGroup.classList.remove("active");
+        loadConfig();
+      }).catch(function(){
+        alert("Failed to save settings.");
+      });
+    });
+
+    loadConfig();
+  </script>
+</body>
+</html>
