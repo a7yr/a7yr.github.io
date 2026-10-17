@@ -332,7 +332,9 @@
     var RTDB_MOOD_URL = "https://a7yrshitvc-default-rtdb.asia-southeast1.firebasedatabase.app/current_mood.json";
     var CLEAN_FALLBACK_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='92' height='92' viewBox='0 0 92 92'><rect width='92' height='92' fill='%2315151a'/><circle cx='46' cy='46' r='18' fill='none' stroke='%23333' stroke-width='4'/></svg>";
 
-    // Clock Engine (Runs independently without blocking UI)
+    var lastRenderedHash = "";
+
+    // Clock Engine
     function runClock() {
       try {
         var now = new Date();
@@ -406,7 +408,7 @@
       } catch(e){}
     }
 
-    // High Reliability Cover Fetcher
+    // Direct iTunes High-Res Cover Art Fetcher
     function fetchArtwork(title, artist, rawArt, callback) {
       try {
         if (rawArt && rawArt.indexOf("2a9b3a5c119d2a7156f7c70c778c3194") === -1 && rawArt.indexOf("star") === -1) {
@@ -435,7 +437,7 @@
       }
     }
 
-    // Main Music Tracking Sync Engine
+    // Dynamic Sync Engine for Now Playing & Recent Activities
     function checkLiveLastFmTrack() {
       try {
         var url = "https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=" + LASTFM_USERNAME + "&api_key=" + LASTFM_API_KEY + "&format=json&limit=10&_=" + Date.now();
@@ -466,35 +468,41 @@
                 if (artEl) artEl.src = imgSrc;
               });
 
-              // Dynamic Recent Activities List
+              // Recent Activities Dynamic Check & Update
               var historyContainer = document.getElementById('vibeHistoryList');
               if (historyContainer) {
                 var historyTracks = isNowPlaying ? tracks.slice(1, 6) : tracks.slice(0, 5);
-                var html = "";
-                for (var i = 0; i < historyTracks.length; i++) {
-                  var t = historyTracks[i];
-                  var tTitle = t.name || "Unknown Track";
-                  var tArtist = (t.artist && t.artist['#text']) ? t.artist['#text'] : "Unknown Artist";
-                  html += '<div class="vibe-item">' +
-                            '<img class="album-art-sm" id="h-img-' + i + '" src="' + CLEAN_FALLBACK_SVG + '" alt=""/>' +
-                            '<div class="track-info-sm">' +
-                              '<h4>' + tTitle + '</h4>' +
-                              '<p>' + tArtist + '</p>' +
-                            '</div>' +
-                          '</div>';
-                }
-                historyContainer.innerHTML = html;
+                var newHash = historyTracks.map(function(t){ return (t.name || "") + "_" + (t.artist ? t.artist['#text'] : ""); }).join("|");
 
-                for (var j = 0; j < historyTracks.length; j++) {
-                  (function(index, trackItem){
-                    var itemTitle = trackItem.name || "";
-                    var itemArtist = (trackItem.artist && trackItem.artist['#text']) ? trackItem.artist['#text'] : "";
-                    var itemRawArt = (trackItem.image && trackItem.image.length > 0) ? trackItem.image[trackItem.image.length - 1]['#text'] : "";
-                    fetchArtwork(itemTitle, itemArtist, itemRawArt, function(imgSrc){
-                      var imgTarget = document.getElementById('h-img-' + index);
-                      if (imgTarget) imgTarget.src = imgSrc;
-                    });
-                  })(j, historyTracks[j]);
+                if (newHash !== lastRenderedHash) {
+                  lastRenderedHash = newHash;
+
+                  var html = "";
+                  for (var i = 0; i < historyTracks.length; i++) {
+                    var t = historyTracks[i];
+                    var tTitle = t.name || "Unknown Track";
+                    var tArtist = (t.artist && t.artist['#text']) ? t.artist['#text'] : "Unknown Artist";
+                    html += '<div class="vibe-item">' +
+                              '<img class="album-art-sm" id="h-img-' + i + '" src="' + CLEAN_FALLBACK_SVG + '" alt=""/>' +
+                              '<div class="track-info-sm">' +
+                                '<h4>' + tTitle + '</h4>' +
+                                '<p>' + tArtist + '</p>' +
+                              '</div>' +
+                            '</div>';
+                  }
+                  historyContainer.innerHTML = html;
+
+                  for (var j = 0; j < historyTracks.length; j++) {
+                    (function(index, trackItem){
+                      var itemTitle = trackItem.name || "";
+                      var itemArtist = (trackItem.artist && trackItem.artist['#text']) ? trackItem.artist['#text'] : "";
+                      var itemRawArt = (trackItem.image && trackItem.image.length > 0) ? trackItem.image[trackItem.image.length - 1]['#text'] : "";
+                      fetchArtwork(itemTitle, itemArtist, itemRawArt, function(imgSrc){
+                        var imgTarget = document.getElementById('h-img-' + index);
+                        if (imgTarget) imgTarget.src = imgSrc;
+                      });
+                    })(j, historyTracks[j]);
+                  }
                 }
               }
             } catch(innerErr) {}
@@ -506,8 +514,8 @@
     fetchUniversalMood();
     checkLiveLastFmTrack();
 
-    setInterval(fetchUniversalMood, 5000);
-    setInterval(checkLiveLastFmTrack, 5000);
+    setInterval(fetchUniversalMood, 4000);
+    setInterval(checkLiveLastFmTrack, 4000);
   </script>
 </body>
 </html>
