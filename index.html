@@ -158,14 +158,14 @@
       <div class="subtitle">
         <span>Live music tracking bwhahaha</span>
         <span>•</span>
-        <span>Local Time: <span id="clock">12:58:20 AM</span> 🕒</span>
+        <span>Local Time: <span id="clock">1:05:20 AM</span> 🕒</span>
       </div>
     </header>
 
     <div class="card now-playing-card">
       <div class="badge">
         <span class="badge-dot"></span>
-        <span id="statusBadge">LAST PLAYED</span>
+        <span id="statusBadge">NOW PLAYING</span>
       </div>
       <div class="track-main">
         <img id="currentArt" class="album-art-lg" src="https://via.placeholder.com/90/1a1a1e/555555?text=Art" alt="Album Art" />
@@ -182,43 +182,16 @@
         <div class="vibe-item">
           <div class="track-info-sm">
             <h4>Loading Activity...</h4>
-            <p>Fetching multi-source album covers...</p>
+            <p>Fetching album covers...</p>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { 
-      getFirestore, 
-      collection, 
-      addDoc, 
-      onSnapshot, 
-      query, 
-      orderBy, 
-      limit, 
-      serverTimestamp 
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyD6cTexajg5qthbeK3Z4lBwR-eIgojtI78",
-      authDomain: "a7yrshitvc.firebaseapp.com",
-      databaseURL: "https://a7yrshitvc-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "a7yrshitvc",
-      storageBucket: "a7yrshitvc.firebasestorage.app",
-      messagingSenderId: "383749658516",
-      appId: "1:383749658516:web:5d2fc4b5b88c4191486181",
-      measurementId: "G-HY0BJVR7WV"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
+  <script>
     const LASTFM_USERNAME = "a7yr";
-    const LASTFM_API_KEY = "b31d67b732b6bb6f66ca8f9c033b97c1"; 
-    let lastSavedTrackKey = "";
+    const LASTFM_API_KEY = "b31d67b732b6bb6f66ca8f9c033b97c1";
 
     function updateClock() {
       const now = new Date();
@@ -229,132 +202,125 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    function cleanSearchQuery(title, artist) {
-      const cleanedTitle = title.replace(/\(From ".*?"\)/gi, '').replace(/\[.*?\]|\(.*?\)/g, '').trim();
-      return { cleanedTitle, query: encodeURIComponent(`${cleanedTitle} ${artist}`) };
+    // Clean Song & Artist Strings for Maximum Match Rate
+    function getCleanQuery(title, artist) {
+      const cleanTitle = title.replace(/\(From ".*?"\)/gi, '')
+                             .replace(/\[.*?\]|\(.*?\)/g, '')
+                             .replace(/- Single|- Remix|- Original/gi, '')
+                             .trim();
+      
+      // Extract main single artist name (before &, commas, feat etc.)
+      const mainArtist = artist.split(/&|,|feat\.|ft\./i)[0].trim();
+      return {
+        query: encodeURIComponent(`${cleanTitle} ${mainArtist}`),
+        titleOnly: encodeURIComponent(cleanTitle)
+      };
     }
 
-    // MULTI-SOURCE SCRAPER (LAST.FM -> ITUNES -> DEEZER -> YT MUSIC -> MUSICBRAINZ)
-    async function fetchBestAlbumArt(title, artist, defaultArt = "") {
-      if (defaultArt && !defaultArt.includes("2a9b3a5c119d2a7156f7c70c778c3194") && !defaultArt.includes("placeholder")) {
-        return defaultArt;
+    // MULTI-PROVIDER COVER ART EXTRACTOR
+    async function fetchCoverArt(title, artist, rawLastFmArt) {
+      // 1. Check direct raw Last.fm image if valid
+      if (rawLastFmArt && rawLastFmArt.trim() !== "" && !rawLastFmArt.includes("2a9b3a5c119d2a7156f7c70c778c3194")) {
+        return rawLastFmArt;
       }
 
-      const { cleanedTitle, query } = cleanSearchQuery(title, artist);
+      const { query, titleOnly } = getCleanQuery(title, artist);
 
-      // 1. iTunes API
+      // 2. iTunes Search API (Search Query)
       try {
         const res = await fetch(`https://itunes.apple.com/search?term=${query}&entity=song&limit=1`);
         const data = await res.json();
         if (data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
-          return data.results[0].artworkUrl100.replace('100x100bb', '400x400bb');
+          return data.results[0].artworkUrl100.replace('100x100bb', '300x300bb');
         }
-      } catch (e) { console.warn("iTunes fetch failed"); }
+      } catch (e) {}
 
-      // 2. Deezer API
+      // 3. iTunes Search Fallback (Title Only Search)
       try {
-        const res = await fetch(`https://api.deezer.com/search?q=${query}&limit=1`);
+        const res = await fetch(`https://itunes.apple.com/search?term=${titleOnly}&entity=song&limit=1`);
         const data = await res.json();
-        if (data.data && data.data.length > 0 && data.data[0].album && data.data[0].album.cover_medium) {
-          return data.data[0].album.cover_medium;
+        if (data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
+          return data.results[0].artworkUrl100.replace('100x100bb', '300x300bb');
         }
-      } catch (e) { console.warn("Deezer fetch failed"); }
+      } catch (e) {}
 
-      // 3. YouTube Music / Invidious API Scraper Fallback
+      // 4. Last.fm Deep Track Info Lookup
       try {
-        const res = await fetch(`https://inv.tux.pizza/api/v1/search?q=${query}&type=video`);
+        const res = await fetch(`https://ws.audioscrobbler.com/2.0/?method=track.getInfo&api_key=${LASTFM_API_KEY}&artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(title)}&format=json`);
         const data = await res.json();
-        if (data && data.length > 0 && data[0].videoThumbnails) {
-          const highResThumb = data[0].videoThumbnails.find(t => t.quality === 'high' || t.quality === 'medium');
-          if (highResThumb) return highResThumb.url;
+        if (data.track && data.track.album && data.track.album.image) {
+          const img = data.track.album.image.find(i => i.size === 'extralarge' || i.size === 'large');
+          if (img && img['#text'] && !img['#text'].includes("2a9b3a5c119d2a7156f7c70c778c3194")) {
+            return img['#text'];
+          }
         }
-      } catch (e) { console.warn("YT Music fetch failed"); }
+      } catch (e) {}
 
-      // 4. MusicBrainz API
+      // 5. JioSaavn / Indian Music Open API Engine
       try {
-        const res = await fetch(`https://musicbrainz.org/ws/2/recording/?query=recording:${encodeURIComponent(cleanedTitle)}%20AND%20artist:${encodeURIComponent(artist)}&fmt=json&limit=1`);
+        const res = await fetch(`https://saavn.dev/api/search/songs?query=${query}&limit=1`);
         const data = await res.json();
-        if (data.recordings && data.recordings.length > 0 && data.recordings[0].releases && data.recordings[0].releases.length > 0) {
-          const releaseId = data.recordings[0].releases[0].id;
-          return `https://coverartarchive.org/release/${releaseId}/front-250`;
+        if (data.data && data.data.results && data.data.results.length > 0) {
+          const song = data.data.results[0];
+          if (song.image && song.image.length > 0) {
+            return song.image[song.image.length - 1].url; // Highest quality image
+          }
         }
-      } catch (e) { console.warn("MusicBrainz fetch failed"); }
+      } catch (e) {}
 
       return "https://via.placeholder.com/90/1a1a1e/888888?text=Art";
     }
 
-    async function saveTrackToDb(title, artist, artUrl) {
-      try {
-        await addDoc(collection(db, "vibe_history"), {
-          title: title,
-          artist: artist,
-          artUrl: artUrl || "",
-          createdAt: serverTimestamp()
-        });
-      } catch (err) {
-        console.error("Firebase save error:", err);
-      }
-    }
-
-    async function fetchLastFmActivity() {
-      const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${LASTFM_USERNAME}&api_key=${LASTFM_API_KEY}&format=json&limit=1`;
+    async function loadMusicActivity() {
+      const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${LASTFM_USERNAME}&api_key=${LASTFM_API_KEY}&format=json&limit=10`;
 
       try {
-        const response = await fetch(url);
-        const data = await response.json();
+        const res = await fetch(url);
+        const data = await res.json();
 
         if (data.recenttracks && data.recenttracks.track.length > 0) {
-          const currentTrack = data.recenttracks.track[0];
-          const currentTitle = currentTrack.name;
-          const currentArtist = currentTrack.artist['#text'];
-          let rawArt = currentTrack.image ? currentTrack.image[2]['#text'] : "";
-          const isNowPlaying = currentTrack['@attr'] && currentTrack['@attr'].nowplaying === "true";
+          const tracks = data.recenttracks.track;
+          const current = tracks[0];
 
-          const bestArt = await fetchBestAlbumArt(currentTitle, currentArtist, rawArt);
+          const isNowPlaying = current['@attr'] && current['@attr'].nowplaying === "true";
+          const currentTitle = current.name;
+          const currentArtist = current.artist['#text'];
+          const rawArt = current.image ? current.image[current.image.length - 1]['#text'] : "";
 
           document.getElementById('statusBadge').innerText = isNowPlaying ? "NOW PLAYING" : "LAST PLAYED";
           document.getElementById('currentTitle').innerText = currentTitle;
           document.getElementById('currentArtist').innerText = currentArtist;
-          document.getElementById('currentArt').src = bestArt;
 
-          const currentKey = `${currentArtist} - ${currentTitle}`;
-          if (currentKey !== lastSavedTrackKey) {
-            lastSavedTrackKey = currentKey;
-            await saveTrackToDb(currentTitle, currentArtist, bestArt);
-          }
+          // Update Now Playing Art
+          fetchCoverArt(currentTitle, currentArtist, rawArt).then(art => {
+            document.getElementById('currentArt').src = art;
+          });
+
+          // Update Recent History Cards
+          const historyContainer = document.getElementById('vibeHistoryList');
+          const historyItems = await Promise.all(tracks.slice(0, 10).map(async (item) => {
+            const title = item.name;
+            const artist = item.artist['#text'];
+            const itemRawArt = item.image ? item.image[item.image.length - 1]['#text'] : "";
+
+            const artUrl = await fetchCoverArt(title, artist, itemRawArt);
+
+            return `
+              <div class="vibe-item">
+                <img class="album-art-sm" src="${escapeHTML(artUrl)}" alt="Art" onerror="this.src='https://via.placeholder.com/48/1a1a1e/888888?text=Art'" />
+                <div class="track-info-sm">
+                  <h4>${escapeHTML(title)}</h4>
+                  <p>${escapeHTML(artist)}</p>
+                </div>
+              </div>
+            `;
+          }));
+
+          historyContainer.innerHTML = historyItems.join('');
         }
       } catch (err) {
-        console.warn("Last.fm fetch error:", err);
+        console.warn("API Error:", err);
       }
-    }
-
-    function listenToVibeHistory() {
-      const q = query(collection(db, "vibe_history"), orderBy("createdAt", "desc"), limit(10));
-
-      onSnapshot(q, (snapshot) => {
-        const container = document.getElementById("vibeHistoryList");
-        if (!container) return;
-
-        if (snapshot.empty) {
-          container.innerHTML = "<p style='color:#666; font-size:0.9rem;'>No vibe history found.</p>";
-          return;
-        }
-
-        container.innerHTML = snapshot.docs.map(doc => {
-          const data = doc.data();
-          const artUrl = data.artUrl || "https://via.placeholder.com/48/1a1a1e/888888?text=Art";
-
-          return `
-            <div class="vibe-item">
-              <img class="album-art-sm" src="${escapeHTML(artUrl)}" alt="Art" onerror="this.src='https://via.placeholder.com/48/1a1a1e/888888?text=Art'" />
-              <div class="track-info-sm">
-                <h4>${escapeHTML(data.title || "Unknown Title")}</h4>
-                <p>${escapeHTML(data.artist || "Unknown Artist")}</p>
-              </div>
-            </div>
-          `;
-        }).join("");
-      });
     }
 
     function escapeHTML(str) {
@@ -363,9 +329,8 @@
       );
     }
 
-    listenToVibeHistory();
-    fetchLastFmActivity();
-    setInterval(fetchLastFmActivity, 10000);
+    loadMusicActivity();
+    setInterval(loadMusicActivity, 10000);
   </script>
 </body>
 </html>
