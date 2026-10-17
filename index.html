@@ -78,6 +78,14 @@
       gap: 6px;
     }
 
+    .nav-links {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
     .nav-link {
       color: var(--accent-color);
       text-decoration: none;
@@ -278,8 +286,10 @@
         <span>•</span>
         <span>Local Time: <span id="clock">--:--:--</span> 🕒</span>
       </div>
-      <div style="margin-top: 10px;">
+      <div class="nav-links">
         <a href="favs.html" class="nav-link">♥ View Favorite Songs</a>
+        <span style="color: #444;">•</span>
+        <a href="about.html" class="nav-link">⚡ About Me</a>
       </div>
     </header>
 
