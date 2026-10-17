@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Aarav is Vibing to <3</title>
+  <title>Aarav is Vibing to &lt;3</title>
   <style>
     * {
       box-sizing: border-box;
@@ -29,7 +29,6 @@
       gap: 25px;
     }
 
-    /* Header */
     header {
       text-align: center;
     }
@@ -50,7 +49,6 @@
       gap: 6px;
     }
 
-    /* Card Base */
     .card {
       background: #0f0f11;
       border: 1px solid #1a1a1e;
@@ -58,7 +56,6 @@
       padding: 20px;
     }
 
-    /* Currently Playing Card */
     .now-playing-card {
       display: flex;
       flex-direction: column;
@@ -95,11 +92,6 @@
       border-radius: 10px;
       background: #1a1a1e;
       object-fit: cover;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #555;
-      font-size: 0.8rem;
       flex-shrink: 0;
     }
 
@@ -115,7 +107,6 @@
       font-size: 0.95rem;
     }
 
-    /* Recent Vibe History Section */
     .history-section h3 {
       font-size: 1.15rem;
       font-weight: 700;
@@ -144,12 +135,6 @@
       border-radius: 6px;
       background: #1a1a1e;
       object-fit: cover;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #555;
-      font-size: 0.75rem;
-      font-weight: 600;
       flex-shrink: 0;
     }
 
@@ -168,7 +153,6 @@
 <body>
 
   <div class="wrapper">
-    <!-- Header -->
     <header>
       <h1>Aarav is Vibing to &lt;3</h1>
       <div class="subtitle">
@@ -178,38 +162,33 @@
       </div>
     </header>
 
-    <!-- Currently / Last Played Card -->
     <div class="card now-playing-card">
       <div class="badge">
         <span class="badge-dot"></span>
         <span id="statusBadge">LAST PLAYED</span>
       </div>
       <div class="track-main">
-        <img id="currentArt" class="album-art-lg" src="" alt="Album Art" style="display: none;" />
-        <div id="currentArtFallback" class="album-art-lg">Album Art</div>
+        <img id="currentArt" class="album-art-lg" src="https://via.placeholder.com/90/1a1a1e/555555?text=Art" alt="Album Art" />
         <div class="track-info-lg">
-          <h2 id="currentTitle">Ucha Lamba Kad (From "Welcome")</h2>
-          <p id="currentArtist">Anand Raj Anand</p>
+          <h2 id="currentTitle">Loading track...</h2>
+          <p id="currentArtist">Please wait</p>
         </div>
       </div>
     </div>
 
-    <!-- Recent Vibe History -->
     <div class="history-section">
-      <h3>Recent Vibe History</h3>
+      <h3>Recent Vibe History (Last 10 Songs)</h3>
       <div class="vibe-list" id="vibeHistoryList">
         <div class="vibe-item">
-          <div class="album-art-sm">Art</div>
           <div class="track-info-sm">
-            <h4>Loading History...</h4>
-            <p>Fetching online sync</p>
+            <h4>Loading Activity...</h4>
+            <p>Fetching last 10 tracks</p>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Firebase & Sync Scripts -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { 
@@ -223,7 +202,6 @@
       serverTimestamp 
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // Firebase Credentials
     const firebaseConfig = {
       apiKey: "AIzaSyD6cTexajg5qthbeK3Z4lBwR-eIgojtI78",
       authDomain: "a7yrshitvc.firebaseapp.com",
@@ -238,11 +216,10 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    const LASTFM_USERNAME = "aarav"; // Aapka Last.fm username
-    const LASTFM_API_KEY = "b2575223441e921d7b38d3ef7f015c32"; 
-    let lastSavedTrack = "";
+    const LASTFM_USERNAME = "a7yr";
+    const LASTFM_API_KEY = "b31d67b732b6bb6f66ca8f9c033b97c1"; 
+    let lastSavedTrackKey = "";
 
-    // Clock Functionality
     function updateClock() {
       const now = new Date();
       document.getElementById('clock').innerText = now.toLocaleTimeString([], {
@@ -252,7 +229,21 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // Save Track to Firestore
+    // Secondary Art Provider: iTunes Search API Fallback
+    async function fetchFallbackAlbumArt(title, artist) {
+      try {
+        const query = encodeURIComponent(`${title} ${artist}`);
+        const res = await fetch(`https://itunes.apple.com/search?term=${query}&entity=song&limit=1`);
+        const data = await res.json();
+        if (data.results && data.results.length > 0) {
+          return data.results[0].artworkUrl100.replace('100x100bb', '300x300bb');
+        }
+      } catch (err) {
+        console.warn("iTunes fallback art error:", err);
+      }
+      return "https://via.placeholder.com/90/1a1a1e/888888?text=Art";
+    }
+
     async function saveTrackToDb(title, artist, artUrl) {
       try {
         await addDoc(collection(db, "vibe_history"), {
@@ -266,41 +257,35 @@
       }
     }
 
-    // Fetch Last.fm Realtime Data
-    async function fetchLastFmTrack() {
-      const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${LASTFM_USERNAME}&api_key=${LASTFM_API_KEY}&format=json&limit=1`;
+    async function fetchLastFmActivity() {
+      const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${LASTFM_USERNAME}&api_key=${LASTFM_API_KEY}&format=json&limit=10`;
 
       try {
         const response = await fetch(url);
         const data = await response.json();
 
         if (data.recenttracks && data.recenttracks.track.length > 0) {
-          const track = data.recenttracks.track[0];
-          const title = track.name;
-          const artist = track.artist['#text'];
-          const artUrl = track.image ? track.image[2]['#text'] : "";
-          const isNowPlaying = track['@attr'] && track['@attr'].nowplaying === "true";
+          const tracks = data.recenttracks.track;
+          const currentTrack = tracks[0];
 
-          document.getElementById('statusBadge').innerText = isNowPlaying ? "NOW PLAYING" : "LAST PLAYED";
-          document.getElementById('currentTitle').innerText = title;
-          document.getElementById('currentArtist').innerText = artist;
+          const currentTitle = currentTrack.name;
+          const currentArtist = currentTrack.artist['#text'];
+          let currentArt = currentTrack.image ? currentTrack.image[2]['#text'] : "";
+          const isNowPlaying = currentTrack['@attr'] && currentTrack['@attr'].nowplaying === "true";
 
-          const imgElem = document.getElementById('currentArt');
-          const fallbackElem = document.getElementById('currentArtFallback');
-
-          if (artUrl) {
-            imgElem.src = artUrl;
-            imgElem.style.display = "block";
-            fallbackElem.style.display = "none";
-          } else {
-            imgElem.style.display = "none";
-            fallbackElem.style.display = "flex";
+          if (!currentArt) {
+            currentArt = await fetchFallbackAlbumArt(currentTitle, currentArtist);
           }
 
-          const trackKey = `${artist} - ${title}`;
-          if (trackKey !== lastSavedTrack) {
-            lastSavedTrack = trackKey;
-            await saveTrackToDb(title, artist, artUrl);
+          document.getElementById('statusBadge').innerText = isNowPlaying ? "NOW PLAYING" : "LAST PLAYED";
+          document.getElementById('currentTitle').innerText = currentTitle;
+          document.getElementById('currentArtist').innerText = currentArtist;
+          document.getElementById('currentArt').src = currentArt;
+
+          const currentKey = `${currentArtist} - ${currentTitle}`;
+          if (currentKey !== lastSavedTrackKey) {
+            lastSavedTrackKey = currentKey;
+            await saveTrackToDb(currentTitle, currentArtist, currentArt);
           }
         }
       } catch (err) {
@@ -308,9 +293,8 @@
       }
     }
 
-    // Realtime Sync Listener for Recent Vibe History
     function listenToVibeHistory() {
-      const q = query(collection(db, "vibe_history"), orderBy("createdAt", "desc"), limit(15));
+      const q = query(collection(db, "vibe_history"), orderBy("createdAt", "desc"), limit(10));
 
       onSnapshot(q, (snapshot) => {
         const container = document.getElementById("vibeHistoryList");
@@ -323,13 +307,11 @@
 
         container.innerHTML = snapshot.docs.map(doc => {
           const data = doc.data();
-          const artHtml = data.artUrl 
-            ? `<img class="album-art-sm" src="${escapeHTML(data.artUrl)}" alt="Art" />` 
-            : `<div class="album-art-sm">Art</div>`;
+          const artUrl = data.artUrl || "https://via.placeholder.com/48/1a1a1e/888888?text=Art";
 
           return `
             <div class="vibe-item">
-              ${artHtml}
+              <img class="album-art-sm" src="${escapeHTML(artUrl)}" alt="Art" onerror="this.src='https://via.placeholder.com/48/1a1a1e/888888?text=Art'" />
               <div class="track-info-sm">
                 <h4>${escapeHTML(data.title || "Unknown Title")}</h4>
                 <p>${escapeHTML(data.artist || "Unknown Artist")}</p>
@@ -346,10 +328,9 @@
       );
     }
 
-    // Initialize
     listenToVibeHistory();
-    fetchLastFmTrack();
-    setInterval(fetchLastFmTrack, 12000); // Check every 12 seconds
+    fetchLastFmActivity();
+    setInterval(fetchLastFmActivity, 10000); // Auto update every 10 sec
   </script>
 </body>
 </html>
