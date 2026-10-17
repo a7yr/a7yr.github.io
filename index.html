@@ -4,8 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AaravReallyGoneCrazy&lt;3</title>
-  <!-- ColorThief Library for Dynamic Palette Extraction -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.0/color-thief.umd.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -15,9 +13,9 @@
     }
 
     :root {
-      --accent-color: #ffffff;
-      --accent-glow: rgba(255, 255, 255, 0.15);
-      --accent-gradient: linear-gradient(135deg, #ffffff 40%, rgba(255, 255, 255, 0.6) 100%);
+      --accent-color: #66fcf1;
+      --accent-glow: rgba(102, 252, 241, 0.25);
+      --accent-gradient: linear-gradient(135deg, #ffffff 30%, #66fcf1 100%);
     }
 
     body {
@@ -120,9 +118,7 @@
 
     .status-pill {
       font-weight: 700;
-      background: var(--accent-gradient);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      color: var(--accent-color);
       word-break: break-word;
     }
 
@@ -344,7 +340,7 @@
         <span id="statusBadge">NOW PLAYING</span>
       </div>
       <div class="track-main">
-        <img id="currentArt" crossorigin="anonymous" class="album-art-lg" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='92' height='92' viewBox='0 0 92 92'><rect width='92' height='92' fill='%2315151a'/><circle cx='46' cy='46' r='18' fill='none' stroke='%23333' stroke-width='4'/></svg>" alt="Album Art" />
+        <img id="currentArt" class="album-art-lg" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='92' height='92' viewBox='0 0 92 92'><rect width='92' height='92' fill='%2315151a'/><circle cx='46' cy='46' r='18' fill='none' stroke='%23333' stroke-width='4'/></svg>" alt="Album Art" />
         <div class="track-info-lg">
           <h2 id="currentTitle">Loading track...</h2>
           <p id="currentArtist">Please wait</p>
@@ -397,11 +393,9 @@
     const LASTFM_API_KEY = "b31d67b732b6bb6f66ca8f9c033b97c1";
     const ADMIN_PASSCODE = "aarav123";
     const RTDB_MOOD_URL = "https://a7yrshitvc-default-rtdb.asia-southeast1.firebasedatabase.app/current_mood.json";
-
     const CLEAN_FALLBACK_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='92' height='92' viewBox='0 0 92 92'><rect width='92' height='92' fill='%2315151a'/><circle cx='46' cy='46' r='18' fill='none' stroke='%23333' stroke-width='4'/></svg>";
 
     let currentSavedTrackKey = "";
-    const colorThief = new ColorThief();
 
     function updateClock() {
       const now = new Date();
@@ -411,27 +405,6 @@
     }
     setInterval(updateClock, 1000);
     updateClock();
-
-    function updateDynamicTheme(imgElement) {
-      if (!imgElement || !imgElement.complete) return;
-      try {
-        const color = colorThief.getColor(imgElement);
-        if (color) {
-          const rgbColor = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
-          const glowColor = `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.38)`;
-
-          document.documentElement.style.setProperty('--accent-color', rgbColor);
-          document.documentElement.style.setProperty('--accent-glow', glowColor);
-          document.documentElement.style.setProperty('--accent-gradient', `linear-gradient(135deg, #ffffff 30%, ${rgbColor} 100%)`);
-        }
-      } catch (e) {
-        document.documentElement.style.setProperty('--accent-color', '#ffffff');
-        document.documentElement.style.setProperty('--accent-glow', 'rgba(255, 255, 255, 0.15)');
-      }
-    }
-
-    const currentImg = document.getElementById('currentArt');
-    currentImg.addEventListener('load', () => updateDynamicTheme(currentImg));
 
     // Protected Cross-Device Universal Status Engine
     const toggleEditBtn = document.getElementById("toggleEditBtn");
@@ -504,7 +477,7 @@
                              .replace(/- single|- remix/gi, '')
                              .trim();
       const cleanArtist = artist.split(/&|,|feat\.|ft\./i)[0].trim();
-      return encodeURIComponent(`${cleanTitle} ${cleanArtist}`);
+      return encodeURIComponent(`${cleanTitle}${cleanArtist}`);
     }
 
     async function getHighResCoverArt(title, artist, rawArt) {
@@ -537,4 +510,66 @@
     async function saveTrackToDatabase(title, artist, artUrl) {
       try {
         await addDoc(collection(db, "vibe_history"), {
-          title
+          title: title,
+          artist: artist,
+          artUrl: artUrl,
+          createdAt: serverTimestamp()
+        });
+      } catch (err) {
+        console.error("Firebase write error:", err);
+      }
+    }
+
+    async function checkLiveLastFmTrack() {
+      const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${LASTFM_USERNAME}&api_key=${LASTFM_API_KEY}&format=json&limit=1`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.recenttracks && data.recenttracks.track.length > 0) {
+          const current = data.recenttracks.track[0];
+          const title = current.name;
+          const artist = current.artist['#text'];
+          const rawArt = current.image ? current.image[current.image.length - 1]['#text'] : "";
+          const isNowPlaying = current['@attr'] && current['@attr'].nowplaying === "true";
+
+          document.getElementById('statusBadge').innerText = isNowPlaying ? "NOW PLAYING" : "LAST PLAYED";
+          document.getElementById('currentTitle').innerText = title;
+          document.getElementById('currentArtist').innerText = artist;
+
+          const coverUrl = await getHighResCoverArt(title, artist, rawArt);
+          document.getElementById('currentArt').src = coverUrl;
+
+          const trackKey = `${artist} -${title}`;
+          if (trackKey !== currentSavedTrackKey) {
+            currentSavedTrackKey = trackKey;
+            await saveTrackToDatabase(title, artist, coverUrl);
+          }
+        }
+      } catch (err) {
+        console.warn("Last.fm sync error:", err);
+      }
+    }
+
+    function listenToVibeHistoryDatabase() {
+      const q = query(collection(db, "vibe_history"), orderBy("createdAt", "desc"), limit(10));
+
+      onSnapshot(q, (snapshot) => {
+        const container = document.getElementById('vibeHistoryList');
+        if (!container) return;
+
+        if (snapshot.empty) {
+          container.innerHTML = "<p style='color:#666; font-size:0.9rem;'>No vibe history saved yet.</p>";
+          return;
+        }
+
+        container.innerHTML = snapshot.docs.map(doc => {
+          const data = doc.data();
+          const artUrl = data.artUrl || CLEAN_FALLBACK_SVG;
+
+          return `
+            <div class="vibe-item">
+              <img class="album-art-sm" src="${escapeHTML(artUrl)}" alt="Art" />
+              <div class="track-info-sm">
+                <h4>${escapeHTML(data.title || "Unknown Title")}</h4>
