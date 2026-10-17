@@ -23,8 +23,8 @@
       border: 1px solid rgba(255, 255, 255, 0.05);
     }
     .history-item img {
-      width: 40px;
-      height: 40px;
+      width: 45px;
+      height: 45px;
       border-radius: 6px;
       object-fit: cover;
     }
@@ -37,13 +37,6 @@
       font-size: 12px;
       margin: 2px 0 0 0;
       color: #888;
-    }
-    .time-container {
-      display: flex;
-      justify-content: space-between;
-      font-size: 11px;
-      color: #777;
-      margin-top: 6px;
     }
   </style>
 </head>
@@ -58,7 +51,7 @@
     </header>
 
     <main>
-      <!-- Current / Most Recent Track Card -->
+      <!-- Current Track Card -->
       <div class="glass-card now-playing">
         <div class="live-indicator">
           <span class="pulse-dot"></span>
@@ -71,21 +64,11 @@
           <div class="track-details">
             <h2 id="song-title" class="song-title">Loading track...</h2>
             <p id="artist-name" class="artist-name">Fetching data</p>
-            
-            <div class="progress-bar-container" style="margin-top: 12px;">
-              <div class="progress-bar">
-                <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
-              </div>
-              <div class="time-container">
-                <span id="current-time">0:00</span>
-                <span id="total-duration">0:00</span>
-              </div>
-            </div>
           </div>
         </div>
       </div>
 
-      <!-- Last 10 Tracks History Section -->
+      <!-- Recent Vibe History Section -->
       <div class="glass-card" style="margin-top: 20px;">
         <h3 style="font-size: 16px; margin-bottom: 15px; color: #fff;">Recent Vibe History</h3>
         <div id="history-container" class="history-list">
@@ -99,38 +82,22 @@
     const API_KEY = 'b31d67b732b6bb6f66ca8f9c033b97c1'; 
     const USERNAME = 'a7yr';
     
-    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=15`;
+    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=11`;
 
     let activeTrackKey = "";
-    let trackDurationSec = 0;
-    let trackStartEpoch = 0;
-    let isTrackPlaying = false;
-    let frozenElapsedSec = 0;
-    let lastKnownPlayingTrack = null; // Ghost track / Khayaal bug ko rokne ke liye permanent lock
 
-    function formatTime(seconds) {
-      if (isNaN(seconds) || seconds < 0) return "0:00";
-      const mins = Math.floor(seconds / 60);
-      const secs = Math.floor(seconds % 60);
-      return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-    }
-
-    async function getItunesDetails(artist, song) {
+    async function getItunesArt(artist, song) {
       try {
         const query = encodeURIComponent(`${artist} ${song}`);
         const res = await fetch(`https://itunes.apple.com/search?term=${query}&entity=song&limit=1`);
         const data = await res.json();
         if (data.results && data.results.length > 0) {
-          const trackData = data.results[0];
-          return {
-            art: trackData.artworkUrl100.replace('100x100bb', '300x300bb'),
-            duration: trackData.trackTimeMillis ? trackData.trackTimeMillis / 1000 : 210
-          };
+          return data.results[0].artworkUrl100.replace('100x100bb', '300x300bb');
         }
       } catch (e) {
         console.error("iTunes fetch failed", e);
       }
-      return { art: null, duration: 210 };
+      return null;
     }
 
     async function getLiveSongs() {
@@ -141,94 +108,63 @@
         const tracks = data.recenttracks.track;
         if (!tracks || tracks.length === 0) return;
 
-        // Check if any track is currently playing right now
-        let playingTrack = null;
-        for (let i = 0; i < Math.min(tracks.length, 3); i++) {
-          if (tracks[i]['@attr'] && tracks[i]['@attr'].nowplaying === 'true') {
-            playingTrack = tracks[i];
-            break;
-          }
-        }
-
-        let currentTrack;
-        if (playingTrack) {
-          // Agar gaana chal raha hai, toh wahi lo aur save karke rakho
-          currentTrack = playingTrack;
-          lastKnownPlayingTrack = playingTrack;
-          isTrackPlaying = true;
-        } else if (lastKnownPlayingTrack) {
-          // Agar pause ho gaya hai, toh Khayaal ko lane ki jagah last known playing track ko hi freeze rakho!
-          currentTrack = lastKnownPlayingTrack;
-          isTrackPlaying = false;
-        } else {
-          currentTrack = tracks[0];
-          isTrackPlaying = false;
-        }
-
+        // Sabse pehla track current/recent maana jayega
+        const currentTrack = tracks[0];
         const trackName = currentTrack.name;
         const artistName = currentTrack.artist['#text'];
         const trackUniqueKey = `${trackName}-${artistName}`;
+        
+        const isPlaying = currentTrack['@attr'] && currentTrack['@attr'].nowplaying === 'true';
 
-        // Agar naya gaana laga hai tabhi details aur timer reset karo
+        // Main card ki details update karo agar track change hua ho
         if (trackUniqueKey !== activeTrackKey) {
           activeTrackKey = trackUniqueKey;
           document.getElementById('song-title').innerText = trackName;
           document.getElementById('artist-name').innerText = artistName;
 
-          if (currentTrack.date && currentTrack.date.uts) {
-            trackStartEpoch = parseInt(currentTrack.date.uts, 10);
-          } else {
-            trackStartEpoch = Math.floor(Date.now() / 1000);
-          }
-          frozenElapsedSec = 0;
-
           let artUrl = (currentTrack.image && currentTrack.image[3] && currentTrack.image[3]['#text']) 
             ? currentTrack.image[3]['#text'] 
             : '';
 
-          const itunes = await getItunesDetails(artistName, trackName);
-          
           if (!artUrl || artUrl.includes('2a96cbd8b46e442fc41c2b86b821562f')) {
-            artUrl = itunes.art || 'https://placehold.co/150x150/111/333?text=No+Art';
+            artUrl = await getItunesArt(artistName, trackName) || 'https://placehold.co/150x150/111/333?text=No+Art';
           }
           
           document.getElementById('album-art').src = artUrl;
-          trackDurationSec = itunes.duration;
-          document.getElementById('total-duration').innerText = formatTime(trackDurationSec);
         }
 
         const indicatorText = document.getElementById('status-text');
-        if (isTrackPlaying) {
+        if (isPlaying) {
           indicatorText.innerText = "Now Playing";
           document.querySelector('.pulse-dot').style.backgroundColor = "#ff2a5f";
         } else {
-          indicatorText.innerText = "Paused / Last Played";
+          indicatorText.innerText = "Last Played";
           document.querySelector('.pulse-dot').style.backgroundColor = "#555";
         }
 
-        // Render Recent Vibe History (Fresh fetch, skipping active track)
+        // Recent Vibe History render karo (index 1 se start karke taaki saare pichle gaane aayein aur art bhi mile)
         const historyContainer = document.getElementById('history-container');
         historyContainer.innerHTML = ""; 
 
-        let historyCount = 0;
-        for (let i = 0; i < tracks.length; i++) {
+        for (let i = 1; i < tracks.length; i++) {
           const t = tracks[i];
-          // Skip if it's the exact track currently shown on the main card
-          if (t.name === trackName && t.artist['#text'] === artistName) continue;
-          if (historyCount >= 10) break; 
+          const tName = t.name;
+          const tArtist = t.artist['#text'];
 
-          let tArt = (t.image && t.image[1] && t.image[1]['#text']) ? t.image[1]['#text'] : 'https://placehold.co/40x40/111/333?text=?';
+          let tArt = (t.image && t.image[1] && t.image[1]['#text']) ? t.image[1]['#text'] : '';
+          if (!tArt || tArt.includes('2a96cbd8b46e442fc41c2b86b821562f')) {
+            tArt = await getItunesArt(tArtist, tName) || 'https://placehold.co/45x45/111/333?text=?';
+          }
 
           historyContainer.innerHTML += `
             <div class="history-item">
               <img src="${tArt}" alt="Art">
               <div class="history-info">
-                <h4>${t.name}</h4>
-                <p>${t.artist['#text']}</p>
+                <h4>${tName}</h4>
+                <p>${tArtist}</p>
               </div>
             </div>
           `;
-          historyCount++;
         }
 
       } catch (error) {
@@ -236,32 +172,8 @@
       }
     }
 
-    function updateProgressAnimation() {
-      let currentElapsedSec = 0;
-
-      if (isTrackPlaying && trackStartEpoch > 0) {
-        const nowEpoch = Math.floor(Date.now() / 1000);
-        currentElapsedSec = nowEpoch - trackStartEpoch;
-        
-        if (currentElapsedSec > trackDurationSec) {
-          currentElapsedSec = trackDurationSec;
-        }
-        frozenElapsedSec = currentElapsedSec; // Save exact point
-      } else {
-        // Paused hone par exact frozen second par lock rahega
-        currentElapsedSec = frozenElapsedSec;
-      }
-
-      let progressPercent = trackDurationSec > 0 ? (currentElapsedSec / trackDurationSec) * 100 : 0;
-      if (progressPercent > 100) progressPercent = 100;
-
-      document.getElementById('progress-fill').style.width = `${progressPercent}%`;
-      document.getElementById('current-time').innerText = formatTime(currentElapsedSec);
-    }
-
     getLiveSongs();
-    setInterval(getLiveSongs, 6000); // Check faster (every 6s) for instant pause/play reaction
-    setInterval(updateProgressAnimation, 1000); 
+    setInterval(getLiveSongs, 8000); 
   </script>
 </body>
 </html>
