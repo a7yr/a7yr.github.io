@@ -435,63 +435,74 @@
       }
     });
 
-    // ITUNES ARTWORK FINDER REPO MERGED LOGIC + MULTI-ENGINE
-    async function fetchAppleiTunesArt(queryStr) {
-      try {
-        // Method 1: Song Entity Search
-        let res = await fetch(`https://itunes.apple.com/search?term=${queryStr}&entity=song&limit=1`);
-        let data = await res.json();
-        
-        if (!data.results || data.results.length === 0) {
-          // Method 2: Album Entity Search (Inspired by repo script.js)
-          res = await fetch(`https://itunes.apple.com/search?term=${queryStr}&entity=album&limit=1`);
-          data = await res.json();
-        }
+    // ADVANCED TRACK & ARTIST CLEANER
+    function extractCleanDetails(rawTitle, rawArtist) {
+      let cleanTitle = (rawTitle || "")
+        .replace(/\[.*?\]|\(.*?\)/g, '')
+        .replace(/from ".*?"/gi, '')
+        .replace(/from '.*?'/gi, '')
+        .replace(/- single|- remix|- original soundtrack|- soundtrack/gi, '')
+        .trim();
 
-        if (data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
-          // Replace 100x100 with Ultra High-Res 2000x2000 as per repo logic
-          return data.results[0].artworkUrl100.replace("100x100bb.jpg", "2000x2000bb.jpg").replace("100x100bb", "2000x2000bb");
-        }
-      } catch (e) {}
-      return null;
+      let primaryArtist = (rawArtist || "").split(/&|,|feat\.|ft\./i)[0].trim();
+
+      let movieMatch = (rawTitle || "").match(/\(from "(.*?)"\)/i) || (rawTitle || "").match(/\(from '(.*?)'\)/i);
+      let movieName = movieMatch ? movieMatch[1].trim() : "";
+
+      return { cleanTitle, primaryArtist, movieName };
     }
 
+    // MULTI-PROVIDER SCRAPER PIPELINE
     async function getUniversalHighResCoverArt(title, artist, rawLastFmArt) {
-      if (rawLastFmArt && rawLastFmArt.trim() !== "" && !rawLastFmArt.includes("2a9b3a5c119d2a7156f7c70c778c3194")) {
+      // Blacklist Last.fm Default Placeholder Bad Star URLs
+      if (
+        rawLastFmArt && 
+        rawLastFmArt.trim() !== "" && 
+        !rawLastFmArt.includes("2a9b3a5c119d2a7156f7c70c778c3194") &&
+        !rawLastFmArt.includes("star")
+      ) {
         return rawLastFmArt;
       }
 
-      const cleanTitle = (title || "").replace(/\(from ".*?"\)/gi, '').replace(/\[.*?\]|\(.*?\)/g, '').replace(/- single|- remix|- original/gi, '').trim();
-      const primaryArtist = (artist || "").split(/&|,|feat\.|ft\./i)[0].trim();
+      const { cleanTitle, primaryArtist, movieName } = extractCleanDetails(title, artist);
 
-      const queryFull = encodeURIComponent(`${cleanTitle} ${primaryArtist}`);
-      const queryTitle = encodeURIComponent(cleanTitle);
+      const searchCandidates = [
+        encodeURIComponent(`${cleanTitle} ${primaryArtist}`),
+        encodeURIComponent(`${cleanTitle} ${movieName}`),
+        encodeURIComponent(`${cleanTitle}`)
+      ];
 
-      // 1. Try iTunes High-Res 2000px Finder
-      let iTunesArt = await fetchAppleiTunesArt(queryFull);
-      if (iTunesArt) return iTunesArt;
+      for (const q of searchCandidates) {
+        if (!q) continue;
 
-      iTunesArt = await fetchAppleiTunesArt(queryTitle);
-      if (iTunesArt) return iTunesArt;
+        // 1. JioSaavn API (Best for Indian/South/Bollywood)
+        try {
+          const res = await fetch(`https://saavn.dev/api/search/songs?query=${q}&limit=1`);
+          const data = await res.json();
+          if (data.data && data.data.results && data.data.results.length > 0) {
+            const imgs = data.data.results[0].image;
+            if (imgs && imgs.length > 0) return imgs[imgs.length - 1].url;
+          }
+        } catch (e) {}
 
-      // 2. JioSaavn Dev Scraper (Fallback for Bollywood/Haryanvi/Hindi)
-      try {
-        const res = await fetch(`https://saavn.dev/api/search/songs?query=${queryFull}&limit=1`);
-        const data = await res.json();
-        if (data.data && data.data.results && data.data.results.length > 0) {
-          const imgs = data.data.results[0].image;
-          if (imgs && imgs.length > 0) return imgs[imgs.length - 1].url;
-        }
-      } catch (e) {}
+        // 2. iTunes API High-Res 2000px
+        try {
+          const res = await fetch(`https://itunes.apple.com/search?term=${q}&entity=song&limit=1`);
+          const data = await res.json();
+          if (data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
+            return data.results[0].artworkUrl100.replace("100x100bb.jpg", "2000x2000bb.jpg").replace("100x100bb", "2000x2000bb");
+          }
+        } catch (e) {}
 
-      // 3. Deezer API Scraper
-      try {
-        const res = await fetch(`https://api.deezer.com/search?q=${queryFull}&limit=1`);
-        const data = await res.json();
-        if (data.data && data.data.length > 0 && data.data[0].album && data.data[0].album.cover_xl) {
-          return data.data[0].album.cover_xl;
-        }
-      } catch (e) {}
+        // 3. Deezer API
+        try {
+          const res = await fetch(`https://api.deezer.com/search?q=${q}&limit=1`);
+          const data = await res.json();
+          if (data.data && data.data.length > 0 && data.data[0].album && data.data[0].album.cover_xl) {
+            return data.data[0].album.cover_xl;
+          }
+        } catch (e) {}
+      }
 
       return CLEAN_FALLBACK_SVG;
     }
