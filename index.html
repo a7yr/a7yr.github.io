@@ -62,7 +62,7 @@
       <div class="glass-card now-playing">
         <div class="live-indicator">
           <span class="pulse-dot"></span>
-          <span>Now Playing</span>
+          <span id="status-text">Now Playing</span>
         </div>
         
         <div class="track-info-container">
@@ -103,17 +103,17 @@
 
     let lastTrackName = "";
     let trackDurationSec = 0;
-    let trackStartTime = 0;
-    let progressTimer = null;
+    let trackStartTimeEpoch = 0;
+    let isTrackPlaying = false;
+    let pausedElapsedTime = 0; // Remembers exact spot when paused
 
-    // Helper to format seconds into m:ss format
     function formatTime(seconds) {
+      if (isNaN(seconds) || seconds < 0) return "0:00";
       const mins = Math.floor(seconds / 60);
       const secs = Math.floor(seconds % 60);
       return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
     }
 
-    // Fetch cover art & total duration from iTunes API
     async function getItunesDetails(artist, song) {
       try {
         const query = encodeURIComponent(`${artist} ${song}`);
@@ -123,7 +123,7 @@
           const trackData = data.results[0];
           return {
             art: trackData.artworkUrl100.replace('100x100bb', '300x300bb'),
-            duration: trackData.trackTimeMillis ? trackData.trackTimeMillis / 1000 : 210 // default 3.5 mins if missing
+            duration: trackData.trackTimeMillis ? trackData.trackTimeMillis / 1000 : 210
           };
         }
       } catch (e) {
@@ -143,15 +143,24 @@
         const currentTrack = tracks[0];
         const trackName = currentTrack.name;
         const artistName = currentTrack.artist['#text'];
-        const isPlaying = currentTrack['@attr'] && currentTrack['@attr'].nowplaying === 'true';
+        
+        // Check if Last.fm explicitly says it's playing right now
+        isTrackPlaying = currentTrack['@attr'] && currentTrack['@attr'].nowplaying === 'true';
+
+        // Get start epoch timestamp
+        if (currentTrack.date && currentTrack.date.uts) {
+          trackStartTimeEpoch = parseInt(currentTrack.date.uts, 10);
+        } else {
+          trackStartTimeEpoch = Math.floor(Date.now() / 1000);
+        }
 
         // Check if track changed
         if (trackName !== lastTrackName) {
           lastTrackName = trackName;
+          pausedElapsedTime = 0; // Reset pause tracker for new song
           document.getElementById('song-title').innerText = trackName;
           document.getElementById('artist-name').innerText = artistName;
 
-          // Fetch Art and Duration from iTunes
           let artUrl = (currentTrack.image && currentTrack.image[3] && currentTrack.image[3]['#text']) 
             ? currentTrack.image[3]['#text'] 
             : '';
@@ -163,19 +172,16 @@
           }
           
           document.getElementById('album-art').src = artUrl;
-
-          // Reset timer trackers for progress bar
           trackDurationSec = itunes.duration;
-          trackStartTime = Date.now(); // Estimate start point based on fetch time
           document.getElementById('total-duration').innerText = formatTime(trackDurationSec);
         }
 
-        const indicator = document.querySelector('.live-indicator span:last-child');
-        if (isPlaying) {
-          indicator.innerText = "Now Playing";
+        const indicatorText = document.getElementById('status-text');
+        if (isTrackPlaying) {
+          indicatorText.innerText = "Now Playing";
           document.querySelector('.pulse-dot').style.backgroundColor = "#ff2a5f";
         } else {
-          indicator.innerText = "Last Played";
+          indicatorText.innerText = "Paused / Last Played";
           document.querySelector('.pulse-dot').style.backgroundColor = "#555";
         }
 
@@ -203,12 +209,23 @@
       }
     }
 
-    // Smooth second-by-second progress bar animation loop
+    // Precise progress bar handler that freezes when paused
     function updateProgressAnimation() {
       if (trackDurationSec > 0) {
-        const elapsedSec = (Date.now() - trackStartTime) / 1000;
-        let progressPercent = (elapsedSec / trackDurationSec) * 100;
+        let elapsedSec = 0;
+
+        if (isTrackPlaying) {
+          // If playing, calculate exact time based on real-world clock
+          const nowEpoch = Math.floor(Date.now() / 1000);
+          elapsedSec = nowEpoch - trackStartTimeEpoch;
+          if (elapsedSec < 0) elapsedSec = 0;
+          pausedElapsedTime = elapsedSec; // Save current spot
+        } else {
+          // If paused, freeze at the exact last known elapsed time
+          elapsedSec = pausedElapsedTime;
+        }
         
+        let progressPercent = (elapsedSec / trackDurationSec) * 100;
         if (progressPercent > 100) progressPercent = 100;
 
         document.getElementById('progress-fill').style.width = `${progressPercent}%`;
@@ -217,8 +234,8 @@
     }
 
     getLiveSongs();
-    setInterval(getLiveSongs, 15000); // Check Last.fm every 15s
-    setInterval(updateProgressAnimation, 1000); // Smooth update every 1s
+    setInterval(getLiveSongs, 10000); // Check Last.fm state every 10s
+    setInterval(updateProgressAnimation, 1000); // UI tick every 1s
   </script>
 </body>
 </html>
