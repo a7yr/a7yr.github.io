@@ -3,13 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Aarav is Vibing to &lt;3</title>
+  <title>AaravReallyGoneCrazy&lt;3</title>
+  <!-- ColorThief Library for Dynamic Palette Extraction -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.0/color-thief.umd.js"></script>
   <style>
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    :root {
+      --accent-color: #e50914;
+      --accent-glow: rgba(229, 9, 20, 0.25);
     }
 
     body {
@@ -19,9 +26,29 @@
       justify-content: center;
       padding: 40px 15px;
       min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+      transition: background-color 1s ease;
+    }
+
+    /* Ambient Dynamic Background Glow */
+    .ambient-glow {
+      position: fixed;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, var(--accent-glow) 0%, rgba(5, 5, 5, 0) 70%);
+      z-index: 0;
+      pointer-events: none;
+      transition: background 1.2s ease-in-out;
+      filter: blur(60px);
     }
 
     .wrapper {
+      position: relative;
+      z-index: 1;
       width: 100%;
       max-width: 520px;
       display: flex;
@@ -54,12 +81,15 @@
       border: 1px solid #1a1a1e;
       border-radius: 16px;
       padding: 20px;
+      transition: border-color 0.8s ease, box-shadow 0.8s ease;
     }
 
     .now-playing-card {
       display: flex;
       flex-direction: column;
       gap: 15px;
+      border-color: var(--accent-color);
+      box-shadow: 0 0 20px var(--accent-glow);
     }
 
     .badge {
@@ -76,8 +106,9 @@
     .badge-dot {
       width: 6px;
       height: 6px;
-      background-color: #e50914;
+      background-color: var(--accent-color);
       border-radius: 50%;
+      transition: background-color 0.8s ease;
     }
 
     .track-main {
@@ -93,6 +124,7 @@
       background: #1a1a1e;
       object-fit: cover;
       flex-shrink: 0;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
     }
 
     .track-info-lg h2 {
@@ -127,6 +159,12 @@
       display: flex;
       align-items: center;
       gap: 14px;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .vibe-item:hover {
+      transform: translateY(-2px);
+      border-color: #2a2a30;
     }
 
     .album-art-sm {
@@ -152,6 +190,8 @@
 </head>
 <body>
 
+  <div class="ambient-glow" id="ambientGlow"></div>
+
   <div class="wrapper">
     <header>
       <h1>Aarav is Vibing to &lt;3</h1>
@@ -162,13 +202,13 @@
       </div>
     </header>
 
-    <div class="card now-playing-card">
+    <div class="card now-playing-card" id="nowPlayingCard">
       <div class="badge">
-        <span class="badge-dot"></span>
+        <span class="badge-dot" id="badgeDot"></span>
         <span id="statusBadge">NOW PLAYING</span>
       </div>
       <div class="track-main">
-        <img id="currentArt" class="album-art-lg" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'><rect width='90' height='90' fill='%231a1a1e'/></svg>" alt="Album Art" />
+        <img id="currentArt" crossorigin="anonymous" class="album-art-lg" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'><rect width='90' height='90' fill='%231a1a1e'/></svg>" alt="Album Art" />
         <div class="track-info-lg">
           <h2 id="currentTitle">Loading track...</h2>
           <p id="currentArtist">Please wait</p>
@@ -177,7 +217,7 @@
     </div>
 
     <div class="history-section">
-      <h3>Recent Vibe History (Last 10 Songs)</h3>
+      <h3>Recent Activities ^_^</h3>
       <div class="vibe-list" id="vibeHistoryList">
         <div class="vibe-item">
           <div class="track-info-sm">
@@ -219,6 +259,7 @@
     const LASTFM_USERNAME = "a7yr";
     const LASTFM_API_KEY = "b31d67b732b6bb6f66ca8f9c033b97c1";
     let currentSavedTrackKey = "";
+    const colorThief = new ColorThief();
 
     function updateClock() {
       const now = new Date();
@@ -228,6 +269,26 @@
     }
     setInterval(updateClock, 1000);
     updateClock();
+
+    function updateDynamicTheme(imgElement) {
+      if (!imgElement || !imgElement.complete) return;
+      try {
+        const color = colorThief.getColor(imgElement);
+        if (color) {
+          const rgbColor = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+          const glowColor = `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.35)`;
+
+          document.documentElement.style.setProperty('--accent-color', rgbColor);
+          document.documentElement.style.setProperty('--accent-glow', glowColor);
+        }
+      } catch (e) {
+        document.documentElement.style.setProperty('--accent-color', '#e50914');
+        document.documentElement.style.setProperty('--accent-glow', 'rgba(229, 9, 20, 0.25)');
+      }
+    }
+
+    const currentImg = document.getElementById('currentArt');
+    currentImg.addEventListener('load', () => updateDynamicTheme(currentImg));
 
     function cleanSearchQuery(title, artist) {
       const cleanTitle = title.replace(/\(from ".*?"\)/gi, '')
@@ -245,7 +306,6 @@
 
       const queryStr = cleanSearchQuery(title, artist);
 
-      // JioSaavn HD API (Best for Bollywood/Punjabi & Regional Covers)
       try {
         const res = await fetch(`https://saavn.dev/api/search/songs?query=${queryStr}&limit=1`);
         const data = await res.json();
@@ -255,7 +315,6 @@
         }
       } catch (e) {}
 
-      // iTunes Fallback API
       try {
         const res = await fetch(`https://itunes.apple.com/search?term=${queryStr}&entity=song&limit=1`);
         const data = await res.json();
@@ -299,7 +358,7 @@
           document.getElementById('currentArtist').innerText = artist;
 
           const coverUrl = await getHighResCoverArt(title, artist, rawArt);
-          document.getElementById('currentArt').src = coverUrl;
+          currentImg.src = coverUrl;
 
           const trackKey = `${artist} - ${title}`;
           if (trackKey !== currentSavedTrackKey) {
