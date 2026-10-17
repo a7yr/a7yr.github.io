@@ -303,7 +303,7 @@
       <div class="status-display">
         <div>
           <span>Current Mood:</span>
-          <span class="status-pill" id="liveStatusText">Chillin &amp; Listening 🎧</span>
+          <span class="status-pill" id="liveStatusText">Loading mood...</span>
         </div>
         <button class="edit-toggle-btn" id="toggleEditBtn">Edit Mood 🔒</button>
       </div>
@@ -375,6 +375,8 @@
     const LASTFM_USERNAME = "a7yr";
     const LASTFM_API_KEY = "b31d67b732b6bb6f66ca8f9c033b97c1";
     const ADMIN_PASSCODE = "aarav123";
+    const RTDB_MOOD_URL = "https://a7yrshitvc-default-rtdb.asia-southeast1.firebasedatabase.app/current_mood.json";
+
     let currentSavedTrackKey = "";
     const colorThief = new ColorThief();
 
@@ -407,16 +409,10 @@
     const currentImg = document.getElementById('currentArt');
     currentImg.addEventListener('load', () => updateDynamicTheme(currentImg));
 
-    // Protected Custom Status with LocalStorage + Firebase Persistence
+    // Protected Cross-Device Universal Status Engine
     const toggleEditBtn = document.getElementById("toggleEditBtn");
     const statusInputGroup = document.getElementById("statusInputGroup");
     const statusElem = document.getElementById("liveStatusText");
-
-    // Load local cached status instantly on page open
-    const cachedStatus = localStorage.getItem("aarav_vibe_status");
-    if (cachedStatus) {
-      statusElem.innerText = cachedStatus;
-    }
 
     toggleEditBtn.addEventListener("click", () => {
       if (statusInputGroup.classList.contains("active")) {
@@ -433,35 +429,40 @@
       }
     });
 
+    // Fetch Mood Live (Runs on ALL devices)
+    async function fetchUniversalMood() {
+      try {
+        const res = await fetch(RTDB_MOOD_URL);
+        const data = await res.json();
+        if (data && data.text) {
+          statusElem.innerText = data.text;
+        } else {
+          statusElem.innerText = "Chillin & Listening 🎧";
+        }
+      } catch (e) {
+        console.warn("Mood fetch error:", e);
+      }
+    }
+
+    // Update Mood to Global Database (Admin device)
     async function updateCustomStatus(statusText) {
       if (!statusText || !statusText.trim()) return;
       const textToSave = statusText.trim();
       
-      // Save locally first
-      localStorage.setItem("aarav_vibe_status", textToSave);
-      statusElem.innerText = textToSave;
-
       try {
-        await setDoc(doc(db, "user_status", "current_vibe"), {
-          text: textToSave,
-          updatedAt: serverTimestamp()
+        await fetch(RTDB_MOOD_URL, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: textToSave, updatedAt: new Date().toISOString() })
         });
+
+        statusElem.innerText = textToSave;
         document.getElementById("statusInput").value = "";
         statusInputGroup.classList.remove("active");
         toggleEditBtn.innerText = "Edit Mood 🔒";
       } catch (e) {
-        console.error("Error updating status to Firebase:", e);
+        console.error("Error writing universal mood:", e);
       }
-    }
-
-    function listenToCustomStatus() {
-      onSnapshot(doc(db, "user_status", "current_vibe"), (docSnap) => {
-        if (docSnap.exists() && docSnap.data().text) {
-          const remoteText = docSnap.data().text;
-          localStorage.setItem("aarav_vibe_status", remoteText);
-          statusElem.innerText = remoteText;
-        }
-      });
     }
 
     document.getElementById("updateStatusBtn").addEventListener("click", () => {
@@ -591,9 +592,11 @@
       );
     }
 
-    listenToCustomStatus();
+    fetchUniversalMood();
     listenToVibeHistoryDatabase();
     checkLiveLastFmTrack();
+    
+    setInterval(fetchUniversalMood, 5000); // Live sync mood across all devices every 5s
     setInterval(checkLiveLastFmTrack, 8000);
   </script>
 </body>
