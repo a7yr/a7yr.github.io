@@ -3,25 +3,49 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Aarav's Favorite Tracks &lt;3</title>
+  <title>Aarav's Favorite Vibe Songs &lt;3</title>
   <style>
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    :root {
+      --accent-color: #66fcf1;
+      --accent-glow: rgba(102, 252, 241, 0.25);
+      --accent-gradient: linear-gradient(135deg, #ffffff 30%, #66fcf1 100%);
     }
 
     body {
       background-color: #050505;
-      color: #ffffff;
+      color: #f0f0f5;
       display: flex;
       justify-content: center;
-      padding: 40px 15px;
+      padding: 45px 15px;
       min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .ambient-glow {
+      position: fixed;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 650px;
+      height: 650px;
+      background: radial-gradient(circle, var(--accent-glow) 0%, rgba(5, 5, 5, 0) 70%);
+      z-index: 0;
+      pointer-events: none;
+      filter: blur(70px);
     }
 
     .wrapper {
+      position: relative;
+      z-index: 1;
       width: 100%;
       max-width: 520px;
       display: flex;
@@ -35,209 +59,425 @@
 
     header h1 {
       font-size: 2.2rem;
-      font-weight: 800;
-      letter-spacing: -0.5px;
+      font-weight: 900;
+      letter-spacing: -0.8px;
       margin-bottom: 6px;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 2px 10px rgba(0,0,0,0.5));
+    }
+
+    .subtitle {
+      color: #a0a0ab;
+      font-size: 0.92rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
     }
 
     .nav-link {
-      color: #8e8e93;
+      color: var(--accent-color);
       text-decoration: none;
-      font-size: 0.9rem;
-      transition: color 0.2s;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.2px;
     }
 
-    .nav-link:hover {
-      color: #e50914;
+    .status-card {
+      background: #0d0d10;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
     }
 
+    .status-display {
+      font-size: 0.92rem;
+      color: #c5c5d0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .edit-toggle-btn {
+      background: transparent;
+      border: none;
+      color: var(--accent-color);
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: underline;
+      white-space: nowrap;
+    }
+
+    /* Admin Form Styling */
+    .admin-form-group {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding-top: 12px;
+    }
+
+    .admin-form-group.active {
+      display: flex;
+    }
+
+    .admin-form-group input, .admin-form-group textarea {
+      background: #15151a;
+      border: 1px solid #282830;
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #fff;
+      font-size: 0.85rem;
+      outline: none;
+      resize: vertical;
+    }
+
+    .admin-form-group textarea {
+      min-height: 70px;
+    }
+
+    .admin-form-group button {
+      background: var(--accent-color);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* Song Cards List */
     .fav-list {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 15px;
     }
 
     .fav-card {
-      background: #0f0f11;
-      border: 1px solid #1a1a1e;
+      background: #0d0d10;
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 16px;
       padding: 18px;
       display: flex;
       flex-direction: column;
       gap: 12px;
-      transition: border-color 0.3s ease, transform 0.2s ease;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     }
 
-    .fav-card:hover {
-      border-color: #2b2b32;
-      transform: translateY(-2px);
-    }
-
-    .track-header {
+    .fav-main {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 15px;
     }
 
-    .album-art {
+    .fav-art {
       width: 64px;
       height: 64px;
       border-radius: 10px;
+      background: #15151a;
       object-fit: cover;
-      background: #1a1a1e;
       flex-shrink: 0;
     }
 
-    .track-details h3 {
+    .fav-info h3 {
       font-size: 1.1rem;
-      font-weight: 700;
+      font-weight: 800;
+      color: #fff;
       margin-bottom: 3px;
     }
 
-    .track-details p {
-      color: #a0a0a0;
+    .fav-info p {
+      color: #90909a;
       font-size: 0.88rem;
+      font-weight: 500;
     }
 
-    .lyric-box {
-      background: #151518;
-      border-left: 3px solid #e50914;
-      border-radius: 6px;
-      padding: 10px 14px;
+    .fav-snippet {
+      background: #131318;
+      border-left: 3px solid var(--accent-color);
+      padding: 8px 12px;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.85rem;
+      color: #d0d0d8;
       font-style: italic;
-      color: #d1d1d6;
-      font-size: 0.9rem;
-      line-height: 1.4;
     }
 
-    .play-btn {
-      align-self: flex-start;
-      background: rgba(229, 9, 20, 0.15);
-      color: #e50914;
-      border: 1px solid rgba(229, 9, 20, 0.3);
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 0.8rem;
+    .fav-lyrics {
+      background: #101014;
+      border: 1px solid rgba(255,255,255,0.04);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.82rem;
+      color: #a5a5b0;
+      white-space: pre-wrap;
+      display: none;
+    }
+
+    .fav-lyrics.show {
+      display: block;
+    }
+
+    .lyrics-toggle-btn {
+      background: transparent;
+      border: none;
+      color: #66fcf1;
+      font-size: 0.78rem;
       font-weight: 600;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.2s ease;
+      text-align: left;
     }
 
-    .play-btn:hover {
-      background: #e50914;
+    .delete-btn {
+      background: #ff4d4d;
       color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      cursor: pointer;
+      align-self: flex-end;
+      display: none;
+    }
+
+    .admin-mode .delete-btn {
+      display: inline-block;
     }
   </style>
 </head>
 <body>
 
-  <div class="wrapper">
+  <div class="ambient-glow"></div>
+
+  <div class="wrapper" id="mainWrapper">
     <header>
-      <h1>Favorite Hall of Fame 🎧</h1>
-      <p style="color: #888; font-size: 0.95rem; margin-top: 4px; margin-bottom: 12px;">Tracks that hit different</p>
-      <a href="index.html" class="nav-link">← Back to Live Tracker</a>
+      <h1>Favorite Songs &lt;3</h1>
+      <div class="subtitle">
+        <span>Aarav's top heavy rotation vibe tracks</span>
+      </div>
+      <div style="margin-top: 10px;">
+        <a href="index.html" class="nav-link">← Back to Live Vibe</a>
+      </div>
     </header>
 
-    <div class="fav-list" id="favList">
-      <!-- Dynamically rendered -->
+    <div class="status-card">
+      <div class="status-display">
+        <span style="font-weight: 600; color: #a5a5b0;">Admin Management</span>
+        <button class="edit-toggle-btn" id="toggleAdminBtn">Admin Login 🔒</button>
+      </div>
+
+      <div class="admin-form-group" id="adminFormGroup">
+        <input type="text" id="songTitle" placeholder="Song Title (e.g. Blinding Lights)" />
+        <input type="text" id="songArtist" placeholder="Artist Name (e.g. The Weeknd)" />
+        <textarea id="songSnippet" placeholder="Vibe Snippet / Note (e.g. Late night highway drives)"></textarea>
+        <textarea id="songLyrics" placeholder="Lyrics or Favorite Verse..."></textarea>
+        <button id="saveSongBtn">Save Favorite Song</button>
+      </div>
+    </div>
+
+    <div class="fav-list" id="favSongsContainer">
+      <div class="fav-card">
+        <div class="fav-info">
+          <h3>Loading Favorites...</h3>
+          <p>Please wait a moment</p>
+        </div>
+      </div>
     </div>
   </div>
 
   <script>
-    const FAVORITE_SONGS = [
-      {
-        title: "Judas",
-        artist: "Lady Gaga",
-        line: "“In the most Biblical sense, I am beyond repentance...”",
-        query: "Judas Lady Gaga"
-      },
-      {
-        title: "Ucha Lamba Kad",
-        artist: "Anand Raj Anand",
-        line: "“Tere bina lagda nahi dil mera dholna...”",
-        query: "Ucha Lamba Kad Welcome"
-      },
-      {
-        title: "Animals",
-        artist: "Martin Garrix",
-        line: "“We're the fuckin' animals!”",
-        query: "Animals Martin Garrix"
-      }
-    ];
+    var ADMIN_PASSCODE = "aarav123";
+    var RTDB_FAV_URL = "https://a7yrshitvc-default-rtdb.asia-southeast1.firebasedatabase.app/favorite_songs.json";
+    var CLEAN_FALLBACK_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'><rect width='64' height='64' fill='%2315151a'/><circle cx='32' cy='32' r='12' fill='none' stroke='%23333' stroke-width='3'/></svg>";
 
-    let currentAudio = null;
+    var isAdminLoggedIn = false;
+    var toggleAdminBtn = document.getElementById("toggleAdminBtn");
+    var adminFormGroup = document.getElementById("adminFormGroup");
+    var mainWrapper = document.getElementById("mainWrapper");
 
-    async function fetchTrackData(song) {
-      let artUrl = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'><rect width='64' height='64' fill='%231a1a1e'/></svg>";
-      let previewUrl = "";
-
-      try {
-        const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(song.query)}&entity=song&limit=1`);
-        const data = await res.json();
-        if (data.results && data.results.length > 0) {
-          const track = data.results[0];
-          artUrl = track.artworkUrl100.replace('100x100bb', '300x300bb');
-          previewUrl = track.previewUrl;
+    // Admin Toggle with Password
+    toggleAdminBtn.addEventListener("click", function() {
+      if (!isAdminLoggedIn) {
+        var pass = prompt("Enter Admin Passcode:");
+        if (pass === ADMIN_PASSCODE) {
+          isAdminLoggedIn = true;
+          adminFormGroup.classList.add("active");
+          mainWrapper.classList.add("admin-mode");
+          toggleAdminBtn.innerText = "Lock Admin 🔓";
+          loadFavorites();
+        } else if (pass !== null) {
+          alert("Incorrect Passcode!");
         }
-      } catch (e) {}
+      } else {
+        isAdminLoggedIn = false;
+        adminFormGroup.classList.remove("active");
+        mainWrapper.classList.remove("admin-mode");
+        toggleAdminBtn.innerText = "Admin Login 🔒";
+        loadFavorites();
+      }
+    });
 
-      return { ...song, artUrl, previewUrl };
+    // Fetch Artwork helper via iTunes
+    function fetchArtwork(title, artist, callback) {
+      var cleanT = (title || "").replace(/\(.*?\)|\[.*?\]/g, "").trim();
+      var cleanA = (artist || "").split(/&|,/)[0].trim();
+      var query = encodeURIComponent(cleanT + " " + cleanA);
+
+      fetch("https://itunes.apple.com/search?term=" + query + "&entity=song&limit=1")
+        .then(function(res){ return res.json(); })
+        .then(function(data){
+          if (data && data.results && data.results.length > 0 && data.results[0].artworkUrl100) {
+            callback(data.results[0].artworkUrl100.replace("100x100bb", "600x600bb"));
+          } else {
+            callback(CLEAN_FALLBACK_SVG);
+          }
+        })
+        .catch(function(){ callback(CLEAN_FALLBACK_SVG); });
     }
 
-    async function renderFavs() {
-      const container = document.getElementById('favList');
-      const songsData = await Promise.all(FAVORITE_SONGS.map(fetchTrackData));
+    // Load Favorite Songs from Firebase
+    function loadFavorites() {
+      fetch(RTDB_FAV_URL)
+        .then(function(res){ return res.json(); })
+        .then(function(data){
+          var container = document.getElementById("favSongsContainer");
+          if (!container) return;
 
-      container.innerHTML = songsData.map((song) => `
-        <div class="fav-card">
-          <div class="track-header">
-            <img class="album-art" src="${song.artUrl}" alt="${song.title}" />
-            <div class="track-details">
-              <h3>${escapeHTML(song.title)}</h3>
-              <p>${escapeHTML(song.artist)}</p>
-            </div>
-          </div>
-          <div class="lyric-box">${escapeHTML(song.line)}</div>
-          ${song.previewUrl ? `
-            <button class="play-btn" onclick="toggleAudio('${song.previewUrl}', this)">
-              ▶ Play Snippet
-            </button>
-          ` : ''}
-        </div>
-      `).join('');
+          var songs = Array.isArray(data) ? data : [];
+          if (songs.length === 0) {
+            container.innerHTML = '<div class="fav-card"><div class="fav-info"><h3>No Favorite Songs Yet</h3><p>Admin can add songs using the panel above.</p></div></div>';
+            return;
+          }
+
+          var html = "";
+          for (var i = 0; i < songs.length; i++) {
+            var song = songs[i];
+            var art = song.art || CLEAN_FALLBACK_SVG;
+            html += '<div class="fav-card" data-index="' + i + '">' +
+                      '<div class="fav-main">' +
+                        '<img class="fav-art" id="fav-art-' + i + '" src="' + art + '" alt="" />' +
+                        '<div class="fav-info" style="flex:1;">' +
+                          '<h3>' + (song.title || "Unknown") + '</h3>' +
+                          '<p>' + (song.artist || "Unknown") + '</p>' +
+                        '</div>' +
+                        (isAdminLoggedIn ? '<button class="delete-btn" onclick="deleteSong(' + i + ')">Delete</button>' : '') +
+                      '</div>';
+            
+            if (song.snippet) {
+              html += '<div class="fav-snippet">“' + song.snippet + '”</div>';
+            }
+
+            if (song.lyrics) {
+              html += '<button class="lyrics-toggle-btn" onclick="toggleLyrics(this)">Show Lyrics ▾</button>' +
+                      '<div class="fav-lyrics">' + song.lyrics + '</div>';
+            }
+
+            html += '</div>';
+          }
+          container.innerHTML = html;
+
+          // Fetch artwork dynamically if missing
+          for (var j = 0; j < songs.length; j++) {
+            if (!songs[j].art || songs[j].art.indexOf("svg") !== -1) {
+              (function(index, sItem){
+                fetchArtwork(sItem.title, sItem.artist, function(resolvedArt){
+                  var imgEl = document.getElementById("fav-art-" + index);
+                  if (imgEl) imgEl.src = resolvedArt;
+                });
+              })(j, songs[j]);
+            }
+          }
+        })
+        .catch(function(){});
     }
 
-    function toggleAudio(url, btn) {
-      if (currentAudio) {
-        currentAudio.pause();
-        document.querySelectorAll('.play-btn').forEach(b => b.innerText = '▶ Play Snippet');
-        if (currentAudio.src === url) {
-          currentAudio = null;
-          return;
-        }
+    // Toggle Lyrics View
+    window.toggleLyrics = function(btn) {
+      var lyricsDiv = btn.nextElementSibling;
+      if (lyricsDiv.classList.contains("show")) {
+        lyricsDiv.classList.remove("show");
+        btn.innerText = "Show Lyrics ▾";
+      } else {
+        lyricsDiv.classList.add("show");
+        btn.innerText = "Hide Lyrics ▴";
+      }
+    };
+
+    // Save New Song
+    document.getElementById("saveSongBtn").addEventListener("click", function() {
+      var title = document.getElementById("songTitle").value.trim();
+      var artist = document.getElementById("songArtist").value.trim();
+      var snippet = document.getElementById("songSnippet").value.trim();
+      var lyrics = document.getElementById("songLyrics").value.trim();
+
+      if (!title || !artist) {
+        alert("Please enter both Title and Artist!");
+        return;
       }
 
-      currentAudio = new Audio(url);
-      currentAudio.play();
-      btn.innerText = '⏸ Pause Snippet';
+      fetch(RTDB_FAV_URL)
+        .then(function(res){ return res.json(); })
+        .then(function(data){
+          var songs = Array.isArray(data) ? data : [];
 
-      currentAudio.onended = () => {
-        btn.innerText = '▶ Play Snippet';
-        currentAudio = null;
-      };
-    }
+          fetchArtwork(title, artist, function(artUrl){
+            var newEntry = {
+              title: title,
+              artist: artist,
+              snippet: snippet,
+              lyrics: lyrics,
+              art: artUrl
+            };
 
-    function escapeHTML(str) {
-      return (str || "").replace(/[&<>'"]/g, 
-        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
-      );
-    }
+            songs.unshift(newEntry); // Add to top
 
-    window.toggleAudio = toggleAudio;
-    renderFavs();
+            fetch(RTDB_FAV_URL, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(songs)
+            }).then(function() {
+              document.getElementById("songTitle").value = "";
+              document.getElementById("songArtist").value = "";
+              document.getElementById("songSnippet").value = "";
+              document.getElementById("songLyrics").value = "";
+              adminFormGroup.classList.remove("active");
+              loadFavorites();
+            }).catch(function(){});
+          });
+        });
+    });
+
+    // Delete Song
+    window.deleteSong = function(index) {
+      if (!confirm("Delete this favorite song?")) return;
+
+      fetch(RTDB_FAV_URL)
+        .then(function(res){ return res.json(); })
+        .then(function(data){
+          var songs = Array.isArray(data) ? data : [];
+          songs.splice(index, 1);
+
+          fetch(RTDB_FAV_URL, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(songs)
+          }).then(function() {
+            loadFavorites();
+          }).catch(function(){});
+        });
+    };
+
+    loadFavorites();
   </script>
 </body>
 </html>
