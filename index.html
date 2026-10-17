@@ -51,37 +51,30 @@
       color: #888;
     }
 
-    /* 100% Stable CSS Minions Animation (No broken images, zero question marks!) */
-    .minion-container {
+    /* 2D Spider-Man Swinging Animation */
+    .spidey-container {
       position: fixed;
-      bottom: 15px;
+      top: 10px;
       left: -100px;
       z-index: 999;
-      font-size: 35px;
       pointer-events: none;
-      animation: runAcross 15s linear infinite;
+      animation: webSwing 12s linear infinite;
     }
-    .minion-container.delay {
-      animation-delay: 7.5s;
-      bottom: auto;
-      top: 15px;
-      animation-duration: 18s;
-      animation-direction: reverse;
-    }
-    .minion-avatar {
+    .spidey-icon {
+      font-size: 40px;
       display: inline-block;
-      animation: bounceMinion 0.4s ease-in-out infinite alternate;
+      animation: spideyFlip 12s linear infinite;
     }
-    @keyframes runAcross {
-      0% { left: -80px; transform: scaleX(1); }
-      49% { transform: scaleX(1); }
-      50% { left: 102vw; transform: scaleX(-1); }
-      99% { transform: scaleX(-1); }
-      100% { left: -80px; transform: scaleX(1); }
+    @keyframes webSwing {
+      0% { left: -100px; transform: translateY(0); }
+      25% { transform: translateY(40px); }
+      50% { left: 50vw; transform: translateY(0); }
+      75% { transform: translateY(40px); }
+      100% { left: 105vw; transform: translateY(0); }
     }
-    @keyframes bounceMinion {
-      from { transform: translateY(0) rotate(0deg); }
-      to { transform: translateY(-10px) rotate(5deg); }
+    @keyframes spideyFlip {
+      0%, 49% { transform: scaleX(1) rotate(-15deg); }
+      50%, 100% { transform: scaleX(-1) rotate(15deg); }
     }
   </style>
 </head>
@@ -89,12 +82,9 @@
 
   <div class="mesh-background"></div>
 
-  <!-- Pure CSS / Emoji Minions (Zero broken image issues) -->
-  <div class="minion-container">
-    <span class="minion-avatar">🍌🏃‍♂️</span>
-  </div>
-  <div class="minion-container delay">
-    <span class="minion-avatar" style="font-size: 30px;">🤪🏃‍♂️</span>
+  <!-- 2D Spider-Man Swinging across the website -->
+  <div class="spidey-container">
+    <span class="spidey-icon">🕷️🕸️</span>
   </div>
 
   <div class="container">
@@ -136,7 +126,7 @@
     const API_KEY = 'b31d67b732b6bb6f66ca8f9c033b97c1'; 
     const USERNAME = 'a7yr';
     
-    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=40`;
+    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=30`;
 
     let activeTrackKey = "";
 
@@ -208,12 +198,13 @@
           document.querySelector('.pulse-dot').style.backgroundColor = "#555";
         }
 
-        // 2. Recent Vibe History
+        // 2. Recent Vibe History (Dynamic & Clean Sync Fix)
         const historyContainer = document.getElementById('history-container');
-        historyContainer.innerHTML = ""; 
-
+        let historyHTML = "";
         let historyCount = 0;
         let seenTracks = new Set();
+        
+        // Always skip the current track on the main card
         seenTracks.add(`${trackName.toLowerCase()}-${artistName.toLowerCase()}`);
 
         for (let i = 1; i < tracks.length; i++) {
@@ -231,10 +222,11 @@
 
           let tArt = (t.image && t.image[1] && t.image[1]['#text']) ? t.image[1]['#text'] : '';
           if (!tArt || tArt.includes('2a96cbd8b46e442fc41c2b86b821562f') || tArt === '') {
-            tArt = await getBestAlbumArt(tArtist, tName) || 'https://placehold.co/45x45/111/333?text=Art';
+            // We use a placeholder instantly so history doesn't lag, and fetch async or use fallback
+            tArt = 'https://placehold.co/45x45/111/333?text=Art';
           }
 
-          historyContainer.innerHTML += `
+          historyHTML += `
             <div class="history-item">
               <img src="${tArt}" alt="Art" onerror="this.src='https://placehold.co/45x45/111/333?text=Art'">
               <div class="history-info">
@@ -246,13 +238,15 @@
           historyCount++;
         }
 
+        historyContainer.innerHTML = historyHTML || `<p style="color: #666; font-size: 14px;">No recent history available...</p>`;
+
       } catch (error) {
         console.error("Error fetching music data:", error);
       }
     }
 
     getLiveSongs();
-    setInterval(getLiveSongs, 6000); 
+    setInterval(getLiveSongs, 5000); // 5 seconds interval for ultra-fast history update
   </script>
 </body>
 </html>
