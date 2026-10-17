@@ -407,7 +407,7 @@
       } catch(e){}
     }
 
-    // Ultra-Clean Song Name Search Fetcher (Removes Movie Tags, Brackets & Clutter)
+    // High Reliability Cover Art Fetcher with Clean Query Regex
     function fetchArtwork(title, artist, rawArt, callback) {
       try {
         if (rawArt && rawArt.indexOf("2a9b3a5c119d2a7156f7c70c778c3194") === -1 && rawArt.indexOf("star") === -1) {
@@ -441,7 +441,7 @@
       }
     }
 
-    // Render Database History Stack to UI
+    // Render History Stack to UI
     function renderHistoryUI(historyArray) {
       var historyContainer = document.getElementById('vibeHistoryList');
       if (!historyContainer) return;
@@ -465,7 +465,7 @@
       historyContainer.innerHTML = html;
     }
 
-    // FIFO Queue Stack Management in Firebase
+    // FIFO Queue Stack Management in Firebase (Max 10 Items)
     function pushToFirebaseHistoryStack(newTrack) {
       fetch(RTDB_HISTORY_URL)
         .then(function(res) { return res.json(); })
