@@ -7,6 +7,40 @@
   <link rel="stylesheet" href="style.css">
   <!-- Adding Google Fonts for that clean aesthetic -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    /* Quick inline styles for the history list so it matches your glass card */
+    .history-list {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 8px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .history-item img {
+      width: 40px;
+      height: 40px;
+      border-radius: 6px;
+      object-fit: cover;
+    }
+    .history-info h4 {
+      font-size: 14px;
+      margin: 0;
+      color: #fff;
+    }
+    .history-info p {
+      font-size: 12px;
+      margin: 2px 0 0 0;
+      color: #888;
+    }
+  </style>
 </head>
 <body>
 
@@ -19,6 +53,7 @@
     </header>
 
     <main>
+      <!-- Current / Most Recent Track Card -->
       <div class="glass-card now-playing">
         <div class="live-indicator">
           <span class="pulse-dot"></span>
@@ -26,7 +61,7 @@
         </div>
         
         <div class="track-info-container">
-          <img id="album-art" src="https://placehold.co/150x150/111/333?text=Loading" alt="Album Art" class="album-art">
+          <img id="album-art" src="https://placehold.co/150x150/111/333?text=Art" alt="Album Art" class="album-art">
           
           <div class="track-details">
             <h2 id="song-title" class="song-title">Loading track...</h2>
@@ -40,54 +75,85 @@
           </div>
         </div>
       </div>
+
+      <!-- Last 10 Tracks History Section -->
+      <div class="glass-card" style="margin-top: 20px;">
+        <h3 style="font-size: 16px; margin-bottom: 15px; color: #fff;">Recent Vibe History</h3>
+        <div id="history-container" class="history-list">
+          <p style="color: #666; font-size: 14px;">Loading recent history...</p>
+        </div>
+      </div>
     </main>
   </div>
 
   <script>
-    // --- IMPORTANT: ADD YOUR LAST.FM API KEY HERE ---
     const API_KEY = 'b31d67b732b6bb6f66ca8f9c033b97c1'; 
     const USERNAME = 'a7yr';
     
-    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=1`;
+    // Request limit set to 10 to grab the current track + last 9 history items
+    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=10`;
 
     let lastTrackName = "";
 
-    async function getLiveSong() {
+    async function getLiveSongs() {
       try {
         const response = await fetch(url);
         const data = await response.json();
         
-        const track = data.recenttracks.track[0];
-        if (!track) return;
+        const tracks = data.recenttracks.track;
+        if (!tracks || tracks.length === 0) return;
 
-        const trackName = track.name;
-        const artistName = track.artist['#text'];
+        // 1. Handle the Current / Most Recent Track
+        const currentTrack = tracks[0];
+        const trackName = currentTrack.name;
+        const artistName = currentTrack.artist['#text'];
         
-        // Get the extra-large image (index 3) safely
-        const artUrl = (track.image && track.image[3] && track.image[3]['#text']) 
-          ? track.image[3]['#text'] 
+        // Fixed Album Art logic with a fallback placeholder if Last.fm image is empty
+        const artUrl = (currentTrack.image && currentTrack.image[3] && currentTrack.image[3]['#text']) 
+          ? currentTrack.image[3]['#text'] 
           : 'https://placehold.co/150x150/111/333?text=No+Art';
 
-        // Check if it is currently playing right this second
-        const isPlaying = track['@attr'] && track['@attr'].nowplaying === 'true';
+        const isPlaying = currentTrack['@attr'] && currentTrack['@attr'].nowplaying === 'true';
         const indicator = document.querySelector('.live-indicator span:last-child');
         
-        // ONLY update DOM if the song changes to stop multi-device ping-pong flickering
         if (trackName !== lastTrackName) {
           lastTrackName = trackName;
-          
           document.getElementById('song-title').innerText = trackName;
           document.getElementById('artist-name').innerText = artistName;
           document.getElementById('album-art').src = artUrl;
         }
 
-        // Always update the play state status (Now Playing vs Last Played) smoothly
         if (isPlaying) {
           indicator.innerText = "Now Playing";
-          document.querySelector('.pulse-dot').style.backgroundColor = "#ff2a5f"; // Apple Music Pink
+          document.querySelector('.pulse-dot').style.backgroundColor = "#ff2a5f";
         } else {
           indicator.innerText = "Last Played";
-          document.querySelector('.pulse-dot').style.backgroundColor = "#555"; // Grey out if paused
+          document.querySelector('.pulse-dot').style.backgroundColor = "#555";
+        }
+
+        // 2. Handle the Last 10 Tracks History List (Tracks index 1 to 9)
+        const historyContainer = document.getElementById('history-container');
+        historyContainer.innerHTML = ""; // Clear out previous load
+
+        // Loop through tracks from index 1 up to 9
+        for (let i = 1; i < tracks.length; i++) {
+          const t = tracks[i];
+          const tName = t.name;
+          const tArtist = t.artist['#text'];
+          const tArt = (t.image && t.image[1] && t.image[1]['#text']) 
+            ? t.image[1]['#text'] 
+            : 'https://placehold.co/40x40/111/333?text=?';
+
+          const itemHTML = `
+            <div class="history-item">
+              <img src="${tArt}" alt="Art">
+              <div class="history-info">
+                <h4>${tName}</h4>
+                <p>${tArtist}</p>
+              </div>
+            </div>
+          `;
+          historyContainer.innerHTML += itemHTML;
         }
 
       } catch (error) {
@@ -95,9 +161,8 @@
       }
     }
 
-    // Fetch immediately, then check every 10 seconds safely
-    getLiveSong();
-    setInterval(getLiveSong, 10000); 
+    getLiveSongs();
+    setInterval(getLiveSongs, 15000); 
   </script>
 </body>
 </html>
