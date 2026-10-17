@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acentyr | Live Activity</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Adding Google Fonts for that clean aesthetic -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <div class="mesh-background"></div>
+
+  <div class="container">
+    <header>
+      <h1>Acentyr's Vibes</h1>
+      <p>Live music tracking via Apple Music</p>
+    </header>
+
+    <main>
+      <div class="glass-card now-playing">
+        <div class="live-indicator">
+          <span class="pulse-dot"></span>
+          <span>Now Playing</span>
+        </div>
+        
+        <div class="track-info-container">
+          <img id="album-art" src="https://placehold.co/150x150/111/333?text=Loading" alt="Album Art" class="album-art">
+          
+          <div class="track-details">
+            <h2 id="song-title" class="song-title">Loading track...</h2>
+            <p id="artist-name" class="artist-name">Fetching data</p>
+            
+            <div class="progress-bar-container">
+              <div class="progress-bar">
+                <div class="progress-fill"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // --- IMPORTANT: ADD YOUR LAST.FM DETAILS HERE ---
+    const API_KEY = 'YOUR_API_KEY_HERE'; 
+    const USERNAME = 'YOUR_USERNAME_HERE';
+    
+    const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=1`;
+
+    async function getLiveSong() {
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        const track = data.recenttracks.track[0];
+        
+        // Update the HTML with the live data
+        document.getElementById('song-title').innerText = track.name;
+        document.getElementById('artist-name').innerText = track.artist['#text'];
+        
+        // Get the extra-large image (index 3)
+        if (track.image && track.image[3] && track.image[3]['#text']) {
+          document.getElementById('album-art').src = track.image[3]['#text'];
+        }
+
+        // Check if it is currently playing right this second
+        const isPlaying = track['@attr'] && track['@attr'].nowplaying === 'true';
+        const indicator = document.querySelector('.live-indicator span:last-child');
+        
+        if (isPlaying) {
+          indicator.innerText = "Now Playing";
+          document.querySelector('.pulse-dot').style.backgroundColor = "#ff2a5f"; // Apple Music Pink
+        } else {
+          indicator.innerText = "Last Played";
+          document.querySelector('.pulse-dot').style.backgroundColor = "#555"; // Grey out if paused
+        }
+
+      } catch (error) {
+        console.error("Error fetching Last.fm data:", error);
+      }
+    }
+
+    // Fetch immediately, then check every 15 seconds
+    getLiveSong();
+    setInterval(getLiveSong, 15000); 
+  </script>
+</body>
+</html>
