@@ -158,7 +158,7 @@
       <div class="subtitle">
         <span>Live music tracking bwhahaha</span>
         <span>•</span>
-        <span>Local Time: <span id="clock">1:05:20 AM</span> 🕒</span>
+        <span>Local Time: <span id="clock">12:00:00 AM</span> 🕒</span>
       </div>
     </header>
 
@@ -168,7 +168,7 @@
         <span id="statusBadge">NOW PLAYING</span>
       </div>
       <div class="track-main">
-        <img id="currentArt" class="album-art-lg" src="https://via.placeholder.com/90/1a1a1e/555555?text=Art" alt="Album Art" />
+        <img id="currentArt" class="album-art-lg" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'><rect width='90' height='90' fill='%231a1a1e'/></svg>" alt="Album Art" />
         <div class="track-info-lg">
           <h2 id="currentTitle">Loading track...</h2>
           <p id="currentArtist">Please wait</p>
@@ -202,31 +202,41 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // Clean Song & Artist Strings for Maximum Match Rate
-    function getCleanQuery(title, artist) {
-      const cleanTitle = title.replace(/\(From ".*?"\)/gi, '')
-                             .replace(/\[.*?\]|\(.*?\)/g, '')
-                             .replace(/- Single|- Remix|- Original/gi, '')
-                             .trim();
+    // Cleaning song titles aggressively to maximize API matches
+    function cleanTitleAndArtist(rawTitle, rawArtist) {
+      let cleanTitle = rawTitle
+        .replace(/\(from ".*?"\)/gi, '')
+        .replace(/\(from '.*?'\)/gi, '')
+        .replace(/\[.*?\]|\(.*?\)/g, '')
+        .replace(/- single|- remix|- original soundtrack/gi, '')
+        .trim();
       
-      // Extract main single artist name (before &, commas, feat etc.)
-      const mainArtist = artist.split(/&|,|feat\.|ft\./i)[0].trim();
+      let cleanArtist = rawArtist.split(/&|,|feat\.|ft\./i)[0].trim();
       return {
-        query: encodeURIComponent(`${cleanTitle} ${mainArtist}`),
+        query: encodeURIComponent(`${cleanTitle} ${cleanArtist}`),
         titleOnly: encodeURIComponent(cleanTitle)
       };
     }
 
-    // MULTI-PROVIDER COVER ART EXTRACTOR
-    async function fetchCoverArt(title, artist, rawLastFmArt) {
-      // 1. Check direct raw Last.fm image if valid
+    // MULTI-PROVIDER COVER ART ENGINE
+    async function getCoverArtUrl(title, artist, rawLastFmArt) {
       if (rawLastFmArt && rawLastFmArt.trim() !== "" && !rawLastFmArt.includes("2a9b3a5c119d2a7156f7c70c778c3194")) {
         return rawLastFmArt;
       }
 
-      const { query, titleOnly } = getCleanQuery(title, artist);
+      const { query, titleOnly } = cleanTitleAndArtist(title, artist);
 
-      // 2. iTunes Search API (Search Query)
+      // 1. JioSaavn / Indian Music API Engine (Best for Bollywood / Punjabi / Indian tracks)
+      try {
+        const res = await fetch(`https://saavn.dev/api/search/songs?query=${query}&limit=1`);
+        const data = await res.json();
+        if (data.data && data.data.results && data.data.results.length > 0) {
+          const imgs = data.data.results[0].image;
+          if (imgs && imgs.length > 0) return imgs[imgs.length - 1].url;
+        }
+      } catch (e) {}
+
+      // 2. iTunes Search API (Query search)
       try {
         const res = await fetch(`https://itunes.apple.com/search?term=${query}&entity=song&limit=1`);
         const data = await res.json();
@@ -235,7 +245,7 @@
         }
       } catch (e) {}
 
-      // 3. iTunes Search Fallback (Title Only Search)
+      // 3. iTunes Search API (Title only search fallback)
       try {
         const res = await fetch(`https://itunes.apple.com/search?term=${titleOnly}&entity=song&limit=1`);
         const data = await res.json();
@@ -244,34 +254,20 @@
         }
       } catch (e) {}
 
-      // 4. Last.fm Deep Track Info Lookup
+      // 4. Deezer API
       try {
-        const res = await fetch(`https://ws.audioscrobbler.com/2.0/?method=track.getInfo&api_key=${LASTFM_API_KEY}&artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(title)}&format=json`);
+        const res = await fetch(`https://api.deezer.com/search?q=${query}&limit=1`);
         const data = await res.json();
-        if (data.track && data.track.album && data.track.album.image) {
-          const img = data.track.album.image.find(i => i.size === 'extralarge' || i.size === 'large');
-          if (img && img['#text'] && !img['#text'].includes("2a9b3a5c119d2a7156f7c70c778c3194")) {
-            return img['#text'];
-          }
+        if (data.data && data.data.length > 0 && data.data[0].album && data.data[0].album.cover_medium) {
+          return data.data[0].album.cover_medium;
         }
       } catch (e) {}
 
-      // 5. JioSaavn / Indian Music Open API Engine
-      try {
-        const res = await fetch(`https://saavn.dev/api/search/songs?query=${query}&limit=1`);
-        const data = await res.json();
-        if (data.data && data.data.results && data.data.results.length > 0) {
-          const song = data.data.results[0];
-          if (song.image && song.image.length > 0) {
-            return song.image[song.image.length - 1].url; // Highest quality image
-          }
-        }
-      } catch (e) {}
-
-      return "https://via.placeholder.com/90/1a1a1e/888888?text=Art";
+      return "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'><rect width='90' height='90' fill='%231a1a1e'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23888' font-size='14'>Art</text></svg>";
     }
 
-    async function loadMusicActivity() {
+    // MAIN DATA SYNCHRONIZER
+    async function refreshMusicFeed() {
       const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${LASTFM_USERNAME}&api_key=${LASTFM_API_KEY}&format=json&limit=10`;
 
       try {
@@ -291,23 +287,21 @@
           document.getElementById('currentTitle').innerText = currentTitle;
           document.getElementById('currentArtist').innerText = currentArtist;
 
-          // Update Now Playing Art
-          fetchCoverArt(currentTitle, currentArtist, rawArt).then(art => {
-            document.getElementById('currentArt').src = art;
-          });
+          // Resolve Now Playing artwork first
+          const currentCover = await getCoverArtUrl(currentTitle, currentArtist, rawArt);
+          document.getElementById('currentArt').src = currentCover;
 
-          // Update Recent History Cards
-          const historyContainer = document.getElementById('vibeHistoryList');
-          const historyItems = await Promise.all(tracks.slice(0, 10).map(async (item) => {
+          // Resolve artwork for all 10 tracks before updating DOM
+          const historyCards = await Promise.all(tracks.slice(0, 10).map(async (item) => {
             const title = item.name;
             const artist = item.artist['#text'];
             const itemRawArt = item.image ? item.image[item.image.length - 1]['#text'] : "";
 
-            const artUrl = await fetchCoverArt(title, artist, itemRawArt);
+            const artUrl = await getCoverArtUrl(title, artist, itemRawArt);
 
             return `
               <div class="vibe-item">
-                <img class="album-art-sm" src="${escapeHTML(artUrl)}" alt="Art" onerror="this.src='https://via.placeholder.com/48/1a1a1e/888888?text=Art'" />
+                <img class="album-art-sm" src="${escapeHTML(artUrl)}" alt="Art" />
                 <div class="track-info-sm">
                   <h4>${escapeHTML(title)}</h4>
                   <p>${escapeHTML(artist)}</p>
@@ -316,10 +310,10 @@
             `;
           }));
 
-          historyContainer.innerHTML = historyItems.join('');
+          document.getElementById('vibeHistoryList').innerHTML = historyCards.join('');
         }
       } catch (err) {
-        console.warn("API Error:", err);
+        console.warn("Feed update error:", err);
       }
     }
 
@@ -329,8 +323,8 @@
       );
     }
 
-    loadMusicActivity();
-    setInterval(loadMusicActivity, 10000);
+    refreshMusicFeed();
+    setInterval(refreshMusicFeed, 10000); // Syncs every 10 sec
   </script>
 </body>
 </html>
