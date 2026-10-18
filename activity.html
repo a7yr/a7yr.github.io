@@ -256,11 +256,16 @@
       fetch(RTDB_MOBILE_URL)
         .then(function(res) { return res.json(); })
         .then(function(data) {
-          if (data && data.app) {
-            var activeAppElem = document.getElementById("mobileActiveApp");
-            var timeElem = document.getElementById("mobileTimeAgo");
+          var activeAppElem = document.getElementById("mobileActiveApp");
+          var timeElem = document.getElementById("mobileTimeAgo");
+          
+          if (data) {
+            // Handle both object {app: "Name"} and direct string data formats
+            var appName = (typeof data === 'object' && data.app) ? data.app : data;
             
-            if (activeAppElem) activeAppElem.innerText = data.app;
+            if (activeAppElem && appName) {
+              activeAppElem.innerText = appName;
+            }
             if (timeElem) {
               var now = new Date();
               timeElem.innerText = "Last checked: " + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -268,7 +273,7 @@
           }
         })
         .catch(function(err) {
-          console.log("Error fetching mobile status");
+          console.log("Error fetching mobile status", err);
         });
     }
 
