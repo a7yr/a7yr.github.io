@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Activity Tracker // a7yr &lt;3</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    :root {
+      --accent-color: #66fcf1;
+      --accent-glow: rgba(102, 252, 241, 0.25);
+      --accent-gradient: linear-gradient(135deg, #ffffff 30%, #66fcf1 100%);
+    }
+
+    body {
+      background-color: #050505;
+      color: #f0f0f5;
+      display: flex;
+      justify-content: center;
+      padding: 45px 15px;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .ambient-glow {
+      position: fixed;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 650px;
+      height: 650px;
+      background: radial-gradient(circle, var(--accent-glow) 0%, rgba(5, 5, 5, 0) 70%);
+      z-index: 0;
+      pointer-events: none;
+      filter: blur(70px);
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    header {
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 2.2rem;
+      font-weight: 900;
+      letter-spacing: -0.8px;
+      margin-bottom: 8px;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 2px 10px rgba(0,0,0,0.5));
+    }
+
+    .subtitle {
+      color: #a0a0ab;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+
+    .nav-links {
+      display: flex;
+      justify-content: center;
+      margin-top: 12px;
+    }
+
+    .nav-link {
+      color: var(--accent-color);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: opacity 0.2s ease;
+    }
+    
+    .nav-link:hover {
+      opacity: 0.8;
+    }
+
+    /* Cat Meme Container */
+    .meme-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .aesthetic-meme {
+      width: 100%;
+      max-width: 280px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      transform: rotate(-3deg);
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .aesthetic-meme:hover {
+      transform: rotate(2deg) scale(1.05);
+      box-shadow: 0 15px 35px var(--accent-glow);
+    }
+
+    /* Discord RPC Card Styling */
+    .rpc-card {
+      background: #111115;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+      width: 100%;
+      position: relative;
+    }
+
+    .rpc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+      color: #72727e;
+      text-transform: uppercase;
+    }
+
+    .rpc-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #23a55a;
+      border-radius: 50%;
+      box-shadow: 0 0 10px #23a55a;
+      animation: pulseDot 2s infinite ease-in-out;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    .rpc-content {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .rpc-large-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 14px;
+      background: #1a1a22;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      flex-shrink: 0;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .rpc-details {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .rpc-app-name {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rpc-text-main {
+      font-size: 0.9rem;
+      color: #dbdbde;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rpc-text-main strong {
+      color: var(--accent-color);
+    }
+
+    .rpc-text-sub {
+      font-size: 0.8rem;
+      color: #8e8e98;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="ambient-glow"></div>
+
+  <div class="wrapper">
+    <header>
+      <h1>Mobile Status 📱</h1>
+      <div class="subtitle">"how i like to make my privacy open source lol" 💀</div>
+      <div class="nav-links">
+        <a href="index.html" class="nav-link">← Go back (￣o￣) . z Z</a>
+      </div>
+    </header>
+
+    <div class="meme-section">
+      <img src="https://github.com/a7yr/a7yr.github.io/blob/main/cat%20meme.jpg?raw=true" alt="Cat open source privacy meme" class="aesthetic-meme">
+    </div>
+
+    <!-- Discord Rich Presence Activity Card for Mobile -->
+    <div class="rpc-card">
+      <div class="rpc-header">
+        <span class="rpc-badge">LIVE ACTIVITY</span>
+        <span class="rpc-dot"></span>
+      </div>
+      
+      <div class="rpc-content">
+        <div class="rpc-large-icon" id="mobileAppIcon">📱</div>
+        
+        <div class="rpc-details">
+          <h4 class="rpc-app-name" id="mobileDeviceName">Android Phone</h4>
+          <p class="rpc-text-main" id="mobileAppStatus">Currently on: <strong id="mobileActiveApp">Waiting for sync...</strong></p>
+          <p class="rpc-text-sub" id="mobileTimeAgo">Fetching data...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Firebase RTDB URL for Mobile Status
+    var RTDB_MOBILE_URL = "https://a7yrshitvc-default-rtdb.asia-southeast1.firebasedatabase.app/mobile_status.json";
+
+    function fetchMobileActivity() {
+      fetch(RTDB_MOBILE_URL)
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (data && data.app) {
+            var activeAppElem = document.getElementById("mobileActiveApp");
+            var timeElem = document.getElementById("mobileTimeAgo");
+            
+            if (activeAppElem) activeAppElem.innerText = data.app;
+            if (timeElem) {
+              var now = new Date();
+              timeElem.innerText = "Last checked: " + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            }
+          }
+        })
+        .catch(function(err) {
+          console.log("Error fetching mobile status");
+        });
+    }
+
+    // Poll Firebase every 3 seconds for live mobile update
+    setInterval(fetchMobileActivity, 3000);
+    fetchMobileActivity();
+  </script>
+</body>
+</html>
