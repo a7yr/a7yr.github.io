@@ -271,6 +271,29 @@
       font-size: 0.83rem;
       font-weight: 500;
     }
+    
+    /* New Styles for Timestamp Pro Feature */
+    .track-time-sm {
+      font-size: 0.72rem;
+      color: #6e6e7a;
+      text-align: right;
+      font-weight: 600;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 65px;
+      flex-shrink: 0;
+    }
+
+    .track-time-sm .now {
+      color: var(--accent-color);
+      animation: pulseText 1.5s infinite ease-in-out;
+    }
+
+    @keyframes pulseText {
+      0%, 100% { opacity: 1; text-shadow: 0 0 5px var(--accent-glow); }
+      50% { opacity: 0.5; text-shadow: none; }
+    }
   </style>
 </head>
 <body>
@@ -323,7 +346,7 @@
       <h3>Recent Activities ^_^</h3>
       <div class="vibe-list" id="vibeHistoryList">
         <div class="vibe-item">
-          <div class="track-info-sm">
+          <div class="track-info-sm" style="flex: 1;">
             <h4>Syncing Permanent FIFO Stack...</h4>
             <p>Please wait a moment</p>
           </div>
@@ -448,46 +471,91 @@
       }
     }
 
-    // Render History Stack to UI
-    function renderHistoryUI(historyArray) {
+    // Format Timestamp to Time String (e.g. 10:15 AM)
+    function formatTimeStr(timestamp) {
+      if (!timestamp) return "--:--";
+      var d = new Date(timestamp);
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    }
+
+    // Render History Stack to UI with Timestamps
+    function renderHistoryUI(historyArray, isCurrentlyPlaying) {
       var historyContainer = document.getElementById('vibeHistoryList');
       if (!historyContainer) return;
 
       if (!historyArray || historyArray.length === 0) {
-        historyContainer.innerHTML = '<div class="vibe-item"><div class="track-info-sm"><h4>No recent history yet</h4></div></div>';
+        historyContainer.innerHTML = '<div class="vibe-item"><div class="track-info-sm" style="flex:1;"><h4>No recent history yet</h4></div></div>';
         return;
       }
 
       var html = "";
       for (var i = 0; i < historyArray.length; i++) {
         var item = historyArray[i];
+        
+        // Build Timestamp Layout
+        var startStr = formatTimeStr(item.startTime);
+        var endStr = formatTimeStr(item.endTime);
+        var timeHtml = "";
+
+        if (i === 0 && isCurrentlyPlaying) {
+          timeHtml = '<div>' + startStr + '</div><div class="now">- Now</div>';
+        } else {
+          timeHtml = '<div>' + startStr + '</div><div>- ' + endStr + '</div>';
+        }
+
         html += '<div class="vibe-item">' +
                   '<img class="album-art-sm" src="' + (item.art || CLEAN_FALLBACK_SVG) + '" alt=""/>' +
-                  '<div class="track-info-sm">' +
+                  '<div class="track-info-sm" style="flex: 1;">' +
                     '<h4>' + (item.title || "Unknown") + '</h4>' +
                     '<p>' + (item.artist || "Unknown") + '</p>' +
                   '</div>' +
+                  '<div class="track-time-sm">' + timeHtml + '</div>' +
                 '</div>';
       }
       historyContainer.innerHTML = html;
     }
 
-    // FIFO Queue Stack Management in Firebase (Max 10 Items)
-    function pushToFirebaseHistoryStack(newTrack) {
+    // FIFO Queue Stack with Start/End Time Intelligence
+    function pushToFirebaseHistoryStack(newTrack, isNowPlaying) {
       fetch(RTDB_HISTORY_URL)
         .then(function(res) { return res.json(); })
         .then(function(data) {
           var historyList = Array.isArray(data) ? data : [];
-
+          
           var isDuplicate = historyList.length > 0 && historyList[0].title === newTrack.title && historyList[0].artist === newTrack.artist;
 
-          if (!isDuplicate) {
+          if (isDuplicate) {
+            // Same track continuing to play -> update EndTime dynamically
+            if (!historyList[0].startTime) historyList[0].startTime = Date.now(); // Fallback for old data
+            historyList[0].endTime = Date.now();
+
+            // Throttle Firebase writes to once every 45 seconds for active track to save bandwidth
+            var lastUpdate = historyList[0]._lastDbUpdate || 0;
+            if (Date.now() - lastUpdate > 45000) {
+              historyList[0]._lastDbUpdate = Date.now();
+              fetch(RTDB_HISTORY_URL, { method: 'PUT', body: JSON.stringify(historyList) });
+            }
+            
+            // Always update UI instantly
+            renderHistoryUI(historyList, isNowPlaying);
+
+          } else {
+            // Brand New Track detected! 
+            // Finalize previous track's end time
+            if (historyList.length > 0) {
+              historyList[0].endTime = Date.now();
+            }
+
             fetchArtwork(newTrack.title, newTrack.artist, newTrack.rawArt, function(resolvedArt) {
               newTrack.art = resolvedArt;
               delete newTrack.rawArt;
+              
+              // Init Start/End Timestamps
+              newTrack.startTime = Date.now();
+              newTrack.endTime = Date.now();
+              newTrack._lastDbUpdate = Date.now();
 
               historyList.unshift(newTrack);
-
               if (historyList.length > 10) {
                 historyList = historyList.slice(0, 10);
               }
@@ -497,15 +565,13 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(historyList)
               }).then(function() {
-                renderHistoryUI(historyList);
+                renderHistoryUI(historyList, isNowPlaying);
               }).catch(function(){});
             });
-          } else {
-            renderHistoryUI(historyList);
           }
         })
         .catch(function() {
-          renderHistoryUI([]);
+          renderHistoryUI([], false);
         });
     }
 
@@ -539,11 +605,12 @@
                 if (artEl) artEl.src = imgSrc;
               });
 
+              // Pass isNowPlaying flag to stack manager
               pushToFirebaseHistoryStack({
                 title: title,
                 artist: artist,
                 rawArt: rawArt
-              });
+              }, isNowPlaying);
 
             } catch(innerErr) {}
           })
@@ -554,10 +621,11 @@
     fetchUniversalMood();
     checkLiveLastFmTrack();
 
+    // Initial Load from DB
     fetch(RTDB_HISTORY_URL)
       .then(function(res){ return res.json(); })
       .then(function(data){
-        if (Array.isArray(data)) renderHistoryUI(data);
+        if (Array.isArray(data)) renderHistoryUI(data, false);
       })
       .catch(function(){});
 
