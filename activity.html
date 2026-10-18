@@ -260,8 +260,24 @@
           var timeElem = document.getElementById("mobileTimeAgo");
           
           if (data) {
-            // Handle both object {app: "Name"} and direct string data formats
-            var appName = (typeof data === 'object' && data.app) ? data.app : data;
+            var appName = "Unknown";
+            
+            if (typeof data === 'string') {
+              appName = data;
+            } else if (typeof data === 'object') {
+              if (typeof data.app === 'string') {
+                appName = data.app;
+              } else if (typeof data.app === 'object') {
+                // Handle deep nesting safely
+                appName = JSON.stringify(data.app).replace(/["{}]/g, '');
+              } else {
+                // Fallback to extracting first value if key differs
+                var values = Object.values(data);
+                if (values.length > 0) {
+                  appName = typeof values[0] === 'string' ? values[0] : JSON.stringify(values[0]).replace(/["{}]/g, '');
+                }
+              }
+            }
             
             if (activeAppElem && appName) {
               activeAppElem.innerText = appName;
