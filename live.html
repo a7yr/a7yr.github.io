@@ -4,6 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AaravReallyGoneCrazy&lt;3</title>
+  
+  <!-- SECURITY LAYER: Disable Right Click & Inspect Element -->
+  <script>
+    document.addEventListener('contextmenu', event => event.preventDefault());
+    document.onkeydown = function(e) {
+      if(e.keyCode == 123) return false; 
+      if(e.ctrlKey && e.shiftKey && (e.keyCode == 'I'.charCodeAt(0) || e.keyCode == 'J'.charCodeAt(0) || e.keyCode == 'C'.charCodeAt(0))) return false;
+      if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; 
+    };
+  </script>
+
   <style>
     * {
       box-sizing: border-box;
@@ -272,7 +283,6 @@
       font-weight: 500;
     }
     
-    /* New Styles for Timestamp Pro Feature */
     .track-time-sm {
       font-size: 0.72rem;
       color: #6e6e7a;
@@ -355,15 +365,16 @@
     </div>
   </div>
 
+  <!-- SECURITY LAYER 1: OBFUSCATED JAVASCRIPT PAYLOAD -->
   <script>
-    var LASTFM_USERNAME = "a7yr";
-    var LASTFM_API_KEY = "b31d67b732b6bb6f66ca8f9c033b97c1";
-    var ADMIN_PASSCODE = "aarav123";
-    var RTDB_MOOD_URL = "https://a7yrshitvc-default-rtdb.asia-southeast1.firebasedatabase.app/current_mood.json";
-    var RTDB_HISTORY_URL = "https://a7yrshitvc-default-rtdb.asia-southeast1.firebasedatabase.app/recent_history.json";
+    var _0xdf2 = [atob("YTd5cg=="),atob("YjMxZDY3YjczMmI2YmI2ZjY2Y2E4ZjljMDMzYjk3YzE="),atob("YWFyYXYxMjM="),atob("aHR0cHM6Ly9hN3lyc2hpdHZjLWRlZmF1bHQtcnRkYi5hc2lhLXNvdXRoZWFzdDEuZmlyZWJhc2VkYXRhYmFzZS5hcHAvY3VycmVudF9tb29kLmpzb24="),atob("aHR0cHM6Ly9hN3lyc2hpdHZjLWRlZmF1bHQtcnRkYi5hc2lhLXNvdXRoZWFzdDEuZmlyZWJhc2VkYXRhYmFzZS5hcHAvcmVjZW50X2hpc3RvcnkuanNvbg==")];
+    var LASTFM_USERNAME = _0xdf2[0];
+    var LASTFM_API_KEY = _0xdf2[1];
+    var ADMIN_PASSCODE = _0xdf2[2];
+    var RTDB_MOOD_URL = _0xdf2[3];
+    var RTDB_HISTORY_URL = _0xdf2[4];
     var CLEAN_FALLBACK_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='92' height='92' viewBox='0 0 92 92'><rect width='92' height='92' fill='%2315151a'/><circle cx='46' cy='46' r='18' fill='none' stroke='%23333' stroke-width='4'/></svg>";
 
-    // Clock Engine
     function runClock() {
       try {
         var now = new Date();
@@ -376,7 +387,6 @@
     setInterval(runClock, 1000);
     runClock();
 
-    // Admin Toggle
     var toggleEditBtn = document.getElementById("toggleEditBtn");
     var statusInputGroup = document.getElementById("statusInputGroup");
     var statusElem = document.getElementById("liveStatusText");
@@ -437,20 +447,13 @@
       } catch(e){}
     }
 
-    // High Reliability Cover Art Fetcher with Clean Query Regex
     function fetchArtwork(title, artist, rawArt, callback) {
       try {
         if (rawArt && rawArt.indexOf("2a9b3a5c119d2a7156f7c70c778c3194") === -1 && rawArt.indexOf("star") === -1) {
           callback(rawArt);
           return;
         }
-
-        var cleanT = (title || "")
-          .replace(/\(.*?\)|\[.*?\]/g, "")
-          .replace(/from\s+["'].*?["']/gi, "")
-          .replace(/feat\.?|ft\.?/gi, "")
-          .trim();
-        
+        var cleanT = (title || "").replace(/\(.*?\)|\[.*?\]/g, "").replace(/from\s+["'].*?["']/gi, "").replace(/feat\.?|ft\.?/gi, "").trim();
         var cleanA = (artist || "").split(/&|,/)[0].trim();
         var query = encodeURIComponent(cleanT + " " + cleanA);
 
@@ -471,38 +474,30 @@
       }
     }
 
-    // Format Timestamp to Time String (e.g. 10:15 AM)
     function formatTimeStr(timestamp) {
       if (!timestamp) return "--:--";
       var d = new Date(timestamp);
       return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
     }
 
-    // Render History Stack to UI with Timestamps
     function renderHistoryUI(historyArray, isCurrentlyPlaying) {
       var historyContainer = document.getElementById('vibeHistoryList');
       if (!historyContainer) return;
-
       if (!historyArray || historyArray.length === 0) {
         historyContainer.innerHTML = '<div class="vibe-item"><div class="track-info-sm" style="flex:1;"><h4>No recent history yet</h4></div></div>';
         return;
       }
-
       var html = "";
       for (var i = 0; i < historyArray.length; i++) {
         var item = historyArray[i];
-        
-        // Build Timestamp Layout
         var startStr = formatTimeStr(item.startTime);
         var endStr = formatTimeStr(item.endTime);
         var timeHtml = "";
-
         if (i === 0 && isCurrentlyPlaying) {
           timeHtml = '<div>' + startStr + '</div><div class="now">- Now</div>';
         } else {
           timeHtml = '<div>' + startStr + '</div><div>- ' + endStr + '</div>';
         }
-
         html += '<div class="vibe-item">' +
                   '<img class="album-art-sm" src="' + (item.art || CLEAN_FALLBACK_SVG) + '" alt=""/>' +
                   '<div class="track-info-sm" style="flex: 1;">' +
@@ -515,51 +510,35 @@
       historyContainer.innerHTML = html;
     }
 
-    // FIFO Queue Stack with Start/End Time Intelligence
     function pushToFirebaseHistoryStack(newTrack, isNowPlaying) {
       fetch(RTDB_HISTORY_URL)
         .then(function(res) { return res.json(); })
         .then(function(data) {
           var historyList = Array.isArray(data) ? data : [];
-          
           var isDuplicate = historyList.length > 0 && historyList[0].title === newTrack.title && historyList[0].artist === newTrack.artist;
-
           if (isDuplicate) {
-            // Same track continuing to play -> update EndTime dynamically
-            if (!historyList[0].startTime) historyList[0].startTime = Date.now(); // Fallback for old data
+            if (!historyList[0].startTime) historyList[0].startTime = Date.now();
             historyList[0].endTime = Date.now();
-
-            // Throttle Firebase writes to once every 45 seconds for active track to save bandwidth
             var lastUpdate = historyList[0]._lastDbUpdate || 0;
             if (Date.now() - lastUpdate > 45000) {
               historyList[0]._lastDbUpdate = Date.now();
               fetch(RTDB_HISTORY_URL, { method: 'PUT', body: JSON.stringify(historyList) });
             }
-            
-            // Always update UI instantly
             renderHistoryUI(historyList, isNowPlaying);
-
           } else {
-            // Brand New Track detected! 
-            // Finalize previous track's end time
             if (historyList.length > 0) {
               historyList[0].endTime = Date.now();
             }
-
             fetchArtwork(newTrack.title, newTrack.artist, newTrack.rawArt, function(resolvedArt) {
               newTrack.art = resolvedArt;
               delete newTrack.rawArt;
-              
-              // Init Start/End Timestamps
               newTrack.startTime = Date.now();
               newTrack.endTime = Date.now();
               newTrack._lastDbUpdate = Date.now();
-
               historyList.unshift(newTrack);
               if (historyList.length > 10) {
                 historyList = historyList.slice(0, 10);
               }
-
               fetch(RTDB_HISTORY_URL, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -575,43 +554,30 @@
         });
     }
 
-    // Poll Last.fm & Update Database Stack
     function checkLiveLastFmTrack() {
       try {
         var url = "https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=" + LASTFM_USERNAME + "&api_key=" + LASTFM_API_KEY + "&format=json&limit=1&_=" + Date.now();
-        
         fetch(url)
           .then(function(res){ return res.json(); })
           .then(function(data){
             try {
               if (!data || !data.recenttracks || !data.recenttracks.track || data.recenttracks.track.length === 0) return;
-
               var current = data.recenttracks.track[0];
               var title = current.name || "Unknown Track";
               var artist = (current.artist && current.artist['#text']) ? current.artist['#text'] : "Unknown Artist";
               var rawArt = (current.image && current.image.length > 0) ? current.image[current.image.length - 1]['#text'] : "";
               var isNowPlaying = current['@attr'] && current['@attr'].nowplaying === "true";
-
               var badge = document.getElementById('statusBadge');
               var titleEl = document.getElementById('currentTitle');
               var artistEl = document.getElementById('currentArtist');
               var artEl = document.getElementById('currentArt');
-
               if (badge) badge.innerText = isNowPlaying ? "NOW PLAYING" : "LAST PLAYED";
               if (titleEl) titleEl.innerText = title;
               if (artistEl) artistEl.innerText = artist;
-
               fetchArtwork(title, artist, rawArt, function(imgSrc){
                 if (artEl) artEl.src = imgSrc;
               });
-
-              // Pass isNowPlaying flag to stack manager
-              pushToFirebaseHistoryStack({
-                title: title,
-                artist: artist,
-                rawArt: rawArt
-              }, isNowPlaying);
-
+              pushToFirebaseHistoryStack({ title: title, artist: artist, rawArt: rawArt }, isNowPlaying);
             } catch(innerErr) {}
           })
           .catch(function(err){});
@@ -621,7 +587,6 @@
     fetchUniversalMood();
     checkLiveLastFmTrack();
 
-    // Initial Load from DB
     fetch(RTDB_HISTORY_URL)
       .then(function(res){ return res.json(); })
       .then(function(data){
