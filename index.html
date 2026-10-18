@@ -27,8 +27,9 @@
       align-items: center;
       min-height: 100vh;
       position: relative;
-      overflow: hidden;
+      overflow-x: hidden;
       -webkit-font-smoothing: antialiased;
+      padding: 40px 0;
     }
 
     /* Floating Ambient Background Animation */
@@ -78,9 +79,10 @@
     .delay-2 { animation-delay: 0.3s; }
     .delay-3 { animation-delay: 0.5s; }
     .delay-4 { animation-delay: 0.7s; }
+    .delay-5 { animation-delay: 0.9s; }
 
     header {
-      margin-bottom: 40px;
+      margin-bottom: 30px;
     }
 
     header h1 {
@@ -107,6 +109,7 @@
       flex-direction: column;
       gap: 16px;
       width: 100%;
+      margin-bottom: 25px;
     }
 
     .nav-card {
@@ -127,7 +130,6 @@
       overflow: hidden;
     }
 
-    /* Card Hover Effects */
     .nav-card::before {
       content: '';
       position: absolute;
@@ -183,8 +185,65 @@
       transform: translateX(5px);
     }
 
+    /* Meme Section Styling */
+    .meme-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 16px;
+      padding: 18px 25px;
+      width: 100%;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .meme-card h3 {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .meme-grid {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      align-items: center;
+      margin-top: 5px;
+    }
+
+    .animated-meme {
+      width: 85px;
+      height: 85px;
+      border-radius: 12px;
+      object-fit: cover;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: #15151a;
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
+      animation: floatMeme 4s ease-in-out infinite;
+    }
+
+    .animated-meme:nth-child(1) { animation-delay: 0s; }
+    .animated-meme:nth-child(2) { animation-delay: 1.2s; }
+    .animated-meme:nth-child(3) { animation-delay: 2.4s; }
+
+    .animated-meme:hover {
+      transform: scale(1.12) rotate(3deg);
+      box-shadow: 0 0 20px var(--accent-glow);
+      border-color: var(--accent-color);
+      z-index: 2;
+    }
+
+    @keyframes floatMeme {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-6px); }
+    }
+
     .footer-text {
-      margin-top: 40px;
+      margin-top: 30px;
       font-size: 0.75rem;
       color: #555;
       font-weight: 600;
@@ -230,7 +289,17 @@
       </a>
     </div>
 
-    <div class="footer-text animate-up delay-4">
+    <!-- Animated Meme / Vibe Section -->
+    <div class="meme-card animate-up delay-5">
+      <h3>Vibe Check 🕶️✨</h3>
+      <div class="meme-grid">
+        <img src="https://github.com/a7yr/a7yr.github.io/blob/main/download.jpg?raw=true" alt="Cool Cat" class="animated-meme" />
+        <img src="https://github.com/a7yr/a7yr.github.io/blob/main/download%20(1).jpg?raw=true" alt="Smiling Dog" class="animated-meme" />
+        <img src="https://github.com/a7yr/a7yr.github.io/blob/main/freaky%20ahh%20monkey%20__3.jpg?raw=true" alt="Freaky Monkey" class="animated-meme" />
+      </div>
+    </div>
+
+    <div class="footer-text animate-up delay-5">
       Welcome to my corner of the internet
     </div>
   </div>
