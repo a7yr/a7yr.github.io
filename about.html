@@ -232,6 +232,7 @@
       flex-direction: column;
       gap: 12px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      position: relative; /* Essential to anchor the pinned sticker badge inside this card */
     }
 
     .card h3 {
@@ -261,6 +262,27 @@
     .card li::before {
       content: "▪ ";
       color: var(--accent-color);
+    }
+
+    /* Pinned Dog Sticker Badge Styling */
+    .sticker-badge {
+      position: absolute;
+      top: -16px;
+      right: 18px;
+      width: 55px;
+      height: 55px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid rgba(255, 255, 255, 0.9);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+      transform: rotate(15deg);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 10;
+      background: #15151a;
+    }
+
+    .sticker-badge:hover {
+      transform: scale(1.18) rotate(0deg);
     }
 
     /* Hidden YouTube Audio Stream Container */
@@ -313,10 +335,10 @@
         <!-- Default Images fallback -->
         <div class="slide-bg active" style="background-image: url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&auto=format&fit=crop&q=60');"></div>
         <img class="slide active" src="https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&auto=format&fit=crop&q=60" alt="Vibe 1" />
-        
+
         <div class="slide-bg" style="background-image: url('https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600&auto=format&fit=crop&q=60');"></div>
         <img class="slide" src="https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600&auto=format&fit=crop&q=60" alt="Vibe 2" />
-        
+
         <div class="slide-bg" style="background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=60');"></div>
         <img class="slide" src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=60" alt="Vibe 3" />
       </div>
@@ -327,8 +349,9 @@
       </div>
     </div>
 
-    <!-- Who Am I Section -->
+    <!-- Who Am I Section with Pinned Sticker Badge -->
     <div class="card">
+      <img src="https://github.com/a7yr/a7yr.github.io/blob/main/download%20(2).jpg?raw=true" alt="Sticker" class="sticker-badge" />
       <h3>🚀 Who Am I</h3>
       <p>Hey, I'm a7yr aka Aarav. Just a guy who likes building random stuff on the internet, experimenting with code, and turning random ideas into actual projects.</p>
       <p>Into web development, tech, and basically anything that makes me go <em>"wait, can i actually build this?"</em> Sometimes it's a website, sometimes a random tool, or a project started at 2 AM for absolutely no reason lmao.</p>
